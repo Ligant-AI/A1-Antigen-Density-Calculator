@@ -79,6 +79,18 @@ const server = createServer(async (req, res) => {
   // Resolve a directory to its index, the way a static host does, so the
   // directory routes behave here as they do in production.
   let path = req.url.split('?')[0]
+  // In production this tool is proxied under its own tool.path by a Worker
+  // that strips that prefix before the request reaches this project's own
+  // dist output, which is built flat at its own root regardless of where it
+  // is mounted. Strip the same prefix here, so a tool's own path resolves
+  // against dist/ the same way the real Worker resolves it against the
+  // deployed Pages project.
+  for (const tool of TOOLS) {
+    if (tool.path !== '/' && path.startsWith(tool.path)) {
+      path = path.slice(tool.path.length - 1)
+      break
+    }
+  }
   if (path.endsWith('/')) path += 'index.html'
   try {
     const body = await readFile(join('dist', path))

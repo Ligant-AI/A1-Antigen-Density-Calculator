@@ -96,7 +96,7 @@ export interface Tool {
 }
 
 export const TOOLS: readonly Tool[] = [
-  { id: 'antigen-density', name: 'Antigen density', path: '/', priority: 1.0 },
+  { id: 'antigen-density', name: 'Antigen density', path: '/antigen-density-calculator/', priority: 1.0 },
 ] as const
 
 export type ToolId = (typeof TOOLS)[number]['id']

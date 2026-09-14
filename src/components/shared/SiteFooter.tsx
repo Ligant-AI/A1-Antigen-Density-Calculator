@@ -167,7 +167,7 @@ export function SiteFooter() {
 
       <p className="footer-licence">
         Licensed under the Apache License, Version 2.0. You may obtain a copy of the License in the{' '}
-        <a href="/LICENSE" target="_blank" rel="noopener">
+        <a href="./LICENSE" target="_blank" rel="noopener">
           <code>LICENSE</code>
           <span className="visually-hidden"> (opens in a new tab)</span>
         </a>{' '}

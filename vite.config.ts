@@ -109,7 +109,10 @@ function siteMetadata(): Plugin {
 // rather than a feature.
 export default defineConfig({
   plugins: [react(), siteMetadata()],
-  base: '/',
+  // Relative, not '/': this tool is proxied at benchtools.ligant.ai/antigen-density-calculator/
+  // by a Worker that strips the prefix before it reaches this project's own
+  // Pages deployment, so the build cannot know its own mount point in advance.
+  base: './',
   build: {
     rollupOptions: {
       input: {
