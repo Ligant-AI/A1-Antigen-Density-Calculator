@@ -108,6 +108,20 @@ export default function App() {
   const { standards, samples, options, lotId } = state
 
   const curveResult = useMemo(() => fitStandardCurve(standards), [standards])
+
+  /**
+   * What the empty result panel lists, as the sibling tools list theirs: the
+   * declarations a result still needs. The same conditions the fit applies, so
+   * the list cannot ask for something the computation does not wait for.
+   */
+  const usableStandards = standards.filter(
+    (s) => s.included && s.mfi !== null && s.mfi > 0 && s.assigned !== null && s.assigned > 0,
+  ).length
+  const missing = [
+    usableStandards < 3 &&
+      `Enter an MFI and an assigned value for at least 3 bead populations (${usableStandards} so far).`,
+    !samples.some((s) => s.mfi !== null) && 'Enter the stained MFI for at least one sample.',
+  ].filter((m): m is string => typeof m === 'string')
   const curve: CurveResult | null = 'error' in curveResult ? null : curveResult
 
   // A capture mismatch invalidates the whole calibration rather than any one
@@ -505,7 +519,15 @@ export default function App() {
                   saturationConfirmed={options.saturationConfirmed}
                 />
               ) : (
-                <div className="empty">Fit a standard curve first.</div>
+                <div className="state-block incomplete">
+                  <h3>No result yet: declarations incomplete</h3>
+                  <ul>
+                    {/* Every declaration made and the fit still refused: its own reason. */}
+                    {(missing.length ? missing : ['error' in curveResult ? curveResult.error : '']).map((m) => (
+                      <li key={m}>{m}</li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
           </section>
@@ -517,12 +539,14 @@ export default function App() {
       <SuiteFooter {...FOOTER} />
 
       <p className="disclaimer">
-        <strong>Research use only. Not for clinical or diagnostic decision-making.</strong>{' '}
-        Results depend on the calibration standard supplied and on the assumption that beads and
-        cells were acquired under identical cytometer settings. Antibody binding capacity is not
-        equivalent to antigen copy number: epitope accessibility, binding valency, conjugate
-        performance, and antigen internalisation all intervene between the two quantities. All
-        computation is performed locally in this browser. Nothing you enter is transmitted.
+        <strong>Research use only. Not qualified for GxP decision-making.</strong>{' '}
+        This tool determines antibody binding capacity from flow cytometry median fluorescence
+        intensity, by calibration against a certified bead standard. It does not verify the standard
+        or its lot, does not observe how the beads and cells were acquired, and cannot detect beads
+        and cells acquired under different cytometer settings. Antibody binding capacity is not
+        antigen copy number: epitope accessibility, binding valency, conjugate performance and
+        antigen internalisation all intervene between the two. All computation is performed locally
+        in this browser. Nothing you enter is transmitted.
       </p>
 
       <div className="colophon">

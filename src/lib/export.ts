@@ -245,7 +245,7 @@ export function exportResultsCsv(payload: ExportPayload, filename: string) {
       'A row marked do_not_report carries its computed value so the export stays reproducible. The value is not reportable.',
     ]),
   )
-  rows.push(csvRow(['Research use only. Not for clinical or diagnostic decision-making.']))
+  rows.push(csvRow(['Research use only. Not qualified for GxP decision-making.']))
 
   download(filename, 'text/csv', rows.join('\n'))
 }
