@@ -18,7 +18,7 @@ import { extname, join } from 'node:path'
 // The parent site the masthead links and the footer's Privacy Policy are the
 // suite's, from the shared header and footer, which is where the page gets
 // them. Exact values only: nothing else on ligant.ai is waved through.
-import { LIGANT_URL, PRIVACY_URL } from '@ligant/bench-chrome'
+import { LIGANT_URL, PRIVACY_URL, PRIVACY_CHOICES_URL, GA_SCRIPT_URL } from '@ligant/bench-chrome'
 
 const failures = []
 const fail = (rule, detail) => failures.push(`  [${rule}] ${detail}`)
@@ -62,6 +62,15 @@ const ANALYTICS_SCRIPT = new Set([
   'https://static.cloudflareinsights.com/beacon.min.js',
   'https://static.cloudflareinsights.com/beacon.min.js/',
 ])
+
+// Google Analytics, which the suite footer (bench-chrome 1.1.0) loads only after
+// the visitor clicks Allow in its banner, and which the privacy statement
+// discloses. Exactly the hosts bench-chrome documents, per directive.
+const GOOGLE_ANALYTICS = {
+  'script-src': new Set(['https://www.googletagmanager.com']),
+  'connect-src': new Set(['https://*.google-analytics.com', 'https://*.analytics.google.com', 'https://*.googletagmanager.com', 'https://www.google.com', 'https://*.g.doubleclick.net']),
+  'img-src': new Set(['https://*.google-analytics.com', 'https://*.googletagmanager.com']),
+}
 
 // CSP tokens that are keywords or schemes rather than remote origins.
 const CSP_SAFE = new Set([
@@ -107,6 +116,7 @@ if (!existsSync(headersPath)) {
       for (const value of values) {
         if (CSP_SAFE.has(value)) continue
         if (name === 'script-src' && ANALYTICS_SCRIPT.has(value)) continue
+        if (GOOGLE_ANALYTICS[name]?.has(value)) continue
         if (/^https?:\/\//.test(value) || value.includes('.') || value === '*') {
           fail('csp', `${name} allows the external origin ${value}`)
         }
@@ -182,6 +192,9 @@ if (existsSync('dist')) {
       if (LIGANT_URL && url === LIGANT_URL) continue
       // The footer's Privacy Policy link, and only that exact URL.
       if (PRIVACY_URL && url === PRIVACY_URL) continue
+      // The suite footer's privacy choice: its policy link, and the one script
+      // it loads, only after Allow. Exact values only.
+      if (url === PRIVACY_CHOICES_URL || url === GA_SCRIPT_URL) continue
       fail('bundle', `${file} embeds ${url.slice(0, 80)}`)
     }
   }
