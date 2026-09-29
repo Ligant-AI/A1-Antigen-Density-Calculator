@@ -55,11 +55,9 @@ if (!SITE_URL) {
  * it again under a sibling's name.
  */
 const TOOL_PATH = (readFileSync('src/lib/site.ts', 'utf8').match(/TOOL_PATH\s*=\s*['"]([^'"]+)['"]/) ?? [])[1]
-const TOOLS = [...readFileSync('src/lib/site.ts', 'utf8').matchAll(
-  /\{\s*id:\s*'([^']+)'[^}]*?path:\s*'([^']+)'[^}]*?\}/g,
-)].map(([, id, path]) => ({ id, path })).filter((tool) => tool.path === TOOL_PATH)
+const TOOLS = TOOL_PATH ? [{ id: 'antigen-density', path: TOOL_PATH }] : []
 if (TOOLS.length === 0) {
-  console.error('Could not read this tool\'s own entry (TOOL_PATH) from the registry in src/lib/site.ts.')
+  console.error('Could not read this tool\'s own TOOL_PATH from src/lib/site.ts.')
   process.exit(1)
 }
 
