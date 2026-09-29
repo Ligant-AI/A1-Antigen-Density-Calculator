@@ -15,6 +15,10 @@
 
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { extname, join } from 'node:path'
+// The parent site the masthead links and the footer's Privacy Policy are the
+// suite's, from the shared header and footer, which is where the page gets
+// them. Exact values only: nothing else on ligant.ai is waved through.
+import { LIGANT_URL, PRIVACY_URL } from '@ligant/bench-chrome'
 
 const failures = []
 const fail = (rule, detail) => failures.push(`  [${rule}] ${detail}`)
@@ -49,14 +53,6 @@ const REPO_URL = (() => {
   return (source.match(/REPO_URL(?::[^=]+)?=\s*['"]([^'"]+)['"]/) ?? [])[1] ?? null
 })()
 
-/**
- * The parent site, which the masthead's lockup links. Exact value only, for the
- * same reason as REPO_URL: nothing else on ligant.ai is waved through by it.
- */
-const LIGANT_URL = (readFileSync('src/lib/site.ts', 'utf8').match(/LIGANT_URL\s*=\s*['"]([^'"]+)['"]/) ?? [])[1] ?? null
-
-/** The footer's Privacy Policy link. Exact value only, as above. */
-const PRIVACY_URL = (readFileSync('src/lib/site.ts', 'utf8').match(/PRIVACY_URL\s*=\s*['"]([^'"]+)['"]/) ?? [])[1] ?? null
 
 // CSP tokens that are keywords or schemes rather than remote origins.
 const CSP_SAFE = new Set([

@@ -20,9 +20,8 @@ import { Results, FlagList } from './components/Results'
 import { StandardsTable, SamplesTable } from './components/Tables'
 import { Method } from './components/Method'
 import { CalibrationVerdict } from './components/CalibrationVerdict'
-import { LigantMark } from './components/LigantMark'
-import { Masthead } from './components/shared/Masthead'
-import { SiteFooter } from './components/shared/SiteFooter'
+import { LigantMark, SuiteFooter, SuiteHeader } from '@ligant/bench-chrome/react'
+import { FOOTER, HEADER } from './lib/chrome'
 import { SkipLink } from './components/shared/SkipLink'
 import { GuidanceProvider } from './components/guidance/GuidanceProvider'
 import { GuidancePin } from './components/guidance/GuidancePin'
@@ -212,11 +211,7 @@ export default function App() {
     <GuidanceProvider corpus={CORPUS} context={guidanceContext}>
     <div className="app">
       <SkipLink />
-      <Masthead title="Antigen Density Calculator">
-        Quantifies surface antigen density from flow cytometry median fluorescence intensity by
-        calibration against certified bead standards. All values are computed deterministically by
-        least-squares regression. No model or inference is applied beyond the reported fit.
-      </Masthead>
+      <SuiteHeader {...HEADER} />
 
       <main id="main">
       <div className="layout">
@@ -553,7 +548,7 @@ export default function App() {
 
       </main>
 
-      <SiteFooter />
+      <SuiteFooter {...FOOTER} />
 
       <p className="disclaimer">
         <strong>Research use only. Not for clinical or diagnostic decision-making.</strong>{' '}

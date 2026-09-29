@@ -96,30 +96,7 @@ p  { margin: 0; }
 
 .app { max-width: 1400px; margin: 0 auto; padding: 0 24px 72px; }
 
-.masthead {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 32px;
-  padding: 26px 0 22px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 24px;
-}
-.masthead p { color: var(--text-secondary); max-width: 62ch; margin-top: 8px; }
-
-.lockup { display: inline-flex; align-items: center; gap: 9px; }
-.wordmark {
-  font-size: 19px;
-  font-weight: 700;
-  letter-spacing: -0.015em;
-  color: var(--text-primary);
-}
-/* The lockup is a link to ligant.ai. Its own colours already carry the
-   brand, so a link only has to give up the browser's blue-and-underline
-   default, not add anything. */
-.lockup-link { color: inherit; text-decoration: none; }
-.lockup-link:hover .wordmark { color: var(--brand-teal); }
-
+/* The header and footer are the suite's: @ligant/bench-chrome/chrome.css. */
 .eyebrow {
   font-size: 11px;
   font-weight: 600;
@@ -127,11 +104,6 @@ p  { margin: 0; }
   text-transform: uppercase;
   color: var(--text-muted);
 }
-/* "Bench Tools" is a link to the suite's own root. Same reasoning as the
-   lockup: keep the muted eyebrow colour, lose only the link default. */
-a.eyebrow { text-decoration: none; }
-a.eyebrow:hover { color: var(--text-primary); }
-.masthead h1 { margin-top: 14px; }
 
 .layout {
   display: grid;
@@ -498,34 +470,9 @@ details.options > div { padding-top: 12px; display: flex; flex-direction: column
 
 /* ---------- tool navigation ---------- */
 
-.tool-nav { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; flex-shrink: 0; }
-.tool-nav ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
-.tool-nav li { display: flex; }
-.tool-nav a, .tool-nav [aria-current] {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px 11px;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  text-decoration: none;
-  white-space: nowrap;
-}
-.tool-nav a { color: var(--text-muted); }
-.tool-nav a:hover { color: var(--text-primary); background: var(--surface-inset); }
-.tool-nav [aria-current] {
-  color: var(--brand-teal);
-  background: var(--surface);
-  border-color: var(--border);
-}
 /* The suite's name, in the corner the guidance switch used to occupy. Achromatic
    and quiet: it identifies the page rather than making a claim about it. */
-.suite-mark { white-space: nowrap; color: var(--text-secondary); }
 
-@media (max-width: 760px) {
-  .masthead { flex-direction: column; gap: 16px; }
-  .tool-nav { align-items: flex-start; }
-}
 
 /* ---------- guidance ---------- */
 
@@ -742,40 +689,9 @@ td input.cell-warning { box-shadow: inset 0 -2px 0 rgba(184, 134, 11, 0.35); }
 
 /* The citation, set apart from the prose above it so it reads as a thing to be
    copied rather than a sentence to be read. */
-.footer-citation {
-  margin: 14px 0 0;
-  padding: 10px 12px;
-  border-left: 2px solid var(--border);
-  background: var(--surface-sunken);
-}
 /* Each reference keeps its own copy control beside it, so it is never ambiguous
    which of the two a press will take. The control is pinned to the top of the
    row because the paper's title wraps to several lines. */
-.footer-citation-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-.footer-citation-row + .footer-citation-row { margin-top: 10px; }
-.footer-citation-row button {
-  padding: 4px 10px;
-  font-size: 11px;
-  flex: none;
-}
-.footer-citation p.footer-citation-note {
-  font-family: var(--font);
-  color: var(--text-muted);
-  margin: 4px 0 10px;
-}
-.footer-citation p {
-  margin: 4px 0 0;
-  font-family: var(--mono);
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--text-secondary);
-}
-.footer-citation cite { font-style: normal; }
 
 /* A decision rather than a note: the rule is heavier and there is no dismiss,
    because the condition it describes is still true until one of the two
@@ -928,43 +844,6 @@ table caption {
 
 /* ---------- who publishes this, and under what terms ---------- */
 
-.site-footer {
-  max-width: 1400px;
-  margin: 40px auto 0;
-  padding: 26px 24px 40px;
-  border-top: 1px solid var(--border);
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--text-secondary);
-}
-.footer-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 32px;
-  align-items: start;
-}
-@media (max-width: 760px) {
-  .footer-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-}
-.footer-prose { max-width: 68ch; }
-.footer-prose p + p { margin-top: 10px; }
 
-.footer-address {
-  font-style: normal;
-  color: var(--text-muted);
-}
-.footer-address .eyebrow { display: block; margin-bottom: 6px; color: var(--text-secondary); }
 
-.footer-licence {
-  margin-top: 22px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
-  font-size: 12px;
-  color: var(--text-muted);
-  max-width: 92ch;
-}
-.footer-licence code { font-size: 11px; padding: 1px 4px; margin: 0 3px; }
-.footer-licence strong { color: var(--text-secondary); }
 
-.site-footer a { color: var(--text-primary); text-decoration: underline; text-underline-offset: 2px; }
-.site-footer a:hover { color: var(--brand-teal); }

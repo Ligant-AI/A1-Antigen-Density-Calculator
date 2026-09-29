@@ -21,6 +21,7 @@
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
+    "@ligant/bench-chrome": "file:vendor/ligant-bench-chrome-1.0.0.tgz",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
