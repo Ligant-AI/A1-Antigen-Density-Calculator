@@ -55,6 +55,9 @@ const REPO_URL = (() => {
  */
 const LIGANT_URL = (readFileSync('src/lib/site.ts', 'utf8').match(/LIGANT_URL\s*=\s*['"]([^'"]+)['"]/) ?? [])[1] ?? null
 
+/** The footer's Privacy Policy link. Exact value only, as above. */
+const PRIVACY_URL = (readFileSync('src/lib/site.ts', 'utf8').match(/PRIVACY_URL\s*=\s*['"]([^'"]+)['"]/) ?? [])[1] ?? null
+
 // CSP tokens that are keywords or schemes rather than remote origins.
 const CSP_SAFE = new Set([
   "'self'", "'none'", "'unsafe-inline'", "'wasm-unsafe-eval'", "'strict-dynamic'",
@@ -171,6 +174,8 @@ if (existsSync('dist')) {
       if (REPO_URL && url === REPO_URL) continue
       // The masthead's link to the parent site, and only that exact URL.
       if (LIGANT_URL && url === LIGANT_URL) continue
+      // The footer's Privacy Policy link, and only that exact URL.
+      if (PRIVACY_URL && url === PRIVACY_URL) continue
       fail('bundle', `${file} embeds ${url.slice(0, 80)}`)
     }
   }

@@ -22,6 +22,10 @@ export const TOOL_PATH = '/antigen-density-calculator/'
  *  Bench Tools suite's own address, this is Ligant's. */
 export const LIGANT_URL = 'https://ligant.ai/'
 
+/** The footer's Privacy Policy link, the one standard statement across the suite. Exact value
+ *  only: the privacy check allows this URL and nothing wider on ligant.ai. */
+export const PRIVACY_URL = 'https://ligant.ai/privacy'
+
 /**
  * The released version, cited on the page and stamped into every export.
  *
