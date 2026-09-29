@@ -49,7 +49,7 @@ identifiers:
   - type: doi
     value: 10.5281/zenodo.22260187
     description: Version DOI for v0.1.3.
-repository-code: https://github.com/abmodi-ai/Ligant.ai-Antigen-Density-Calculator
+repository-code: https://github.com/Ligant-AI/A1-Antigen-Density-Calculator
 url: https://benchtools.ligant.ai
 keywords:
   - flow cytometry

@@ -49,6 +49,12 @@ const REPO_URL = (() => {
   return (source.match(/REPO_URL(?::[^=]+)?=\s*['"]([^'"]+)['"]/) ?? [])[1] ?? null
 })()
 
+/**
+ * The parent site, which the masthead's lockup links. Exact value only, for the
+ * same reason as REPO_URL: nothing else on ligant.ai is waved through by it.
+ */
+const LIGANT_URL = (readFileSync('src/lib/site.ts', 'utf8').match(/LIGANT_URL\s*=\s*['"]([^'"]+)['"]/) ?? [])[1] ?? null
+
 // CSP tokens that are keywords or schemes rather than remote origins.
 const CSP_SAFE = new Set([
   "'self'", "'none'", "'unsafe-inline'", "'wasm-unsafe-eval'", "'strict-dynamic'",
@@ -163,6 +169,8 @@ if (existsSync('dist')) {
       if (SITE_URL && url.startsWith(SITE_URL)) continue
       // The repository the footer links, and only that exact URL.
       if (REPO_URL && url === REPO_URL) continue
+      // The masthead's link to the parent site, and only that exact URL.
+      if (LIGANT_URL && url === LIGANT_URL) continue
       fail('bundle', `${file} embeds ${url.slice(0, 80)}`)
     }
   }
@@ -191,5 +199,6 @@ if (failures.length > 0) {
 
 console.log(
   'Privacy check passed: no external origin, no network primitive, and no embedded URL' +
-    (REPO_URL ? ' other than the repository the footer links.' : '.'),
+    (REPO_URL ? ' other than the repository the footer links' : '') +
+    (LIGANT_URL ? `${REPO_URL ? ' and' : ' other than'} the parent site the masthead links.` : '.'),
 )
