@@ -142,8 +142,6 @@ pulling in a library, so that every number can be traced and tested:
 is wrong with a single value at the field it was typed into.
 **`src/lib/paste.ts`** (`readPaste`) reads a block pasted from a spreadsheet and
 reports what it assumed, rather than silently guessing.
-**`src/lib/persist.ts`** (`persist`, `restoreOptions`) holds the rule that
-storage mirrors work in progress, and nothing else.
 
 ## Reproducibility and determinism
 
@@ -207,33 +205,39 @@ negotiable.
 
 ## Privacy
 
-Nothing you enter is transmitted, and the page contacts no third party at all.
-Not "we do not sell your data", but "no origin other than this one is contacted,
-ever":
+The page carries the standard privacy statement every Ligant Bench Tool shares:
+
+> Everything you enter into this tool stays on your computer. Calculations run
+> entirely in your browser, and your inputs are never transmitted, stored, or
+> logged. We use Cloudflare Web Analytics to count visits and measure how
+> quickly this page loads, so we can see which tools are used and improve them.
+> It sets no cookie, does not identify you, and never reads what you type.
+
+The full terms are in the [Privacy Policy](https://ligant.ai/privacy).
 
 - Typefaces are self-hosted, about 104 kB of Latin subsets, rather than loaded
-  from a font network, so no third party sees a visitor.
-- There is no analytics script, no error reporting and no telemetry of any kind.
-- The content security policy permits connections to this origin only.
-- What is stored in your browser is disclosed on the page, is only ever the
-  values currently on screen, and is removed by a button. Enter nothing and
-  nothing is written.
+  from a font network.
+- Nothing is kept in browser storage: every load starts from an empty document,
+  and the worked example is one press of a button away.
+- The content security policy permits this origin, and the Cloudflare Web
+  Analytics beacon script and nothing else. Its report goes back to this origin.
 
 **This is enforced, not promised.** Two checks run on every commit:
 
-- `npm run check:privacy` fails the build on any external origin in the policy,
-  the entry document or the bundle, and on any network primitive in the source.
+- `npm run check:privacy` fails the build on any external origin in the policy
+  other than the analytics beacon script, in the entry document or the bundle,
+  and on any network primitive in the source.
 - `npm run check:network` serves the production build with the real policy
   applied as a header, drives a full session in a browser, and fails if a single
-  request leaves the origin. It also asserts that every key written to browser
-  storage is disclosed on the page and removed by the control that offers to
-  remove it.
+  request leaves the origin. It also fails if the page reads or writes browser
+  storage at any point in that session, a reload included.
 
 String analysis is the early gate. The runtime assertion against the build is
 the guarantee about what was built. Neither can see what a host inserts into a
-response after the build, which is a real failure mode: a reviewer once found an
-analytics beacon on a served page that no source-level check could have caught.
-Whoever deploys this is the only party positioned to check for that, and should.
+response after the build: the analytics beacon itself is inserted at the edge,
+which is why the policy names it rather than the build containing it. Whoever
+deploys this is the only party positioned to check what else a host adds, and
+should.
 
 **What this repository can and cannot give you.** It ships the policy it is
 built to be served under, in `public/_headers`, and the two checks above that

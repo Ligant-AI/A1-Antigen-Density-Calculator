@@ -1,17 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { AnchorId, GuidanceEntry, ToolContext } from '../../lib/guidance/types'
 import { buildIndex, search, type Match } from '../../lib/guidance/retrieval'
 
-/**
- * A preference this component used to write, and now only clears.
- *
- * Guidance was opt in behind a switch in the masthead. It is always on, so
- * there is no preference to keep, and the key is removed from anyone who still
- * carries it. It was also the one key the privacy disclosure never listed,
- * which the disclosure now cannot be wrong about: there is nothing here to
- * list.
- */
-const RETIRED_PREFERENCE_KEY = 'ligant.guidance.v1'
 
 /** One question and the passages retrieval returned for it. */
 export interface Exchange {
@@ -78,15 +68,8 @@ export function GuidanceProvider({ corpus, context, children }: Props) {
     })
   }, [])
 
-  // Nothing writes this any more, so a reader who once used the switch would
-  // otherwise keep a key no part of the interface accounts for.
-  useEffect(() => {
-    try {
-      localStorage.removeItem(RETIRED_PREFERENCE_KEY)
-    } catch {
-      // Storage unavailable. Nothing was written in the first place.
-    }
-  }, [])
+  // The tool keeps nothing in browser storage, and that includes a preference
+  // an earlier version wrote: it is neither read nor removed.
 
   const value = useMemo<GuidanceValue>(
     () => ({

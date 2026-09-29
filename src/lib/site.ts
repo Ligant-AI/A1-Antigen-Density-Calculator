@@ -92,7 +92,7 @@ export const PAPER_TITLE =
  * reading it from here rather than pattern-matching a host.
  *
  * Nothing on the page loads from it. It is an address a reader may choose to
- * follow, which is also why no check here can confirm it resolves: this tool
- * contacts no third party, and that includes to test its own links.
+ * follow, which is also why no check here can confirm it resolves: nothing
+ * here fetches another origin, and that includes to test its own links.
  */
 export const REPO_URL: string | null = 'https://github.com/Ligant-AI/A1-Antigen-Density-Calculator'

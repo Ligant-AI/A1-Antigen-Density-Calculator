@@ -126,6 +126,49 @@ page.on('console', (m) => {
   if (/Content Security Policy|Refused to/i.test(m.text())) cspViolations.push(m.text())
 })
 
+/*
+ * The page stores nothing and opens empty, as every Bench Tool does, so "the
+ * worked example" is reached the way a reader reaches it: a fresh load and one
+ * press of the button.
+ */
+async function freshWorkedExample() {
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: 'Load worked example' }).click()
+  await page.waitForTimeout(300)
+}
+
+/*
+ * Put the tables into a given state the way a reader would: the worked example
+ * (which carries the settings every case below assumes), then every row
+ * removed and the rows typed in. Nothing is written to storage to get there,
+ * because the page reads nothing from it.
+ */
+async function setTables({ standards, samples }) {
+  await freshWorkedExample()
+  const tables = page.locator('table')
+  for (const [index, rows, add] of [[0, standards, '+ Add population'], [1, samples, '+ Add sample']]) {
+    const table = tables.nth(index)
+    while (await table.locator('button.icon').count()) await table.locator('button.icon').first().click()
+    for (let r = 0; r < rows.length; r++) await page.getByRole('button', { name: add }).click()
+    for (let r = 0; r < rows.length; r++) {
+      const row = rows[r]
+      const kind = index === 0 ? 'standard' : 'sample'
+      await page.getByLabel(`Label for ${kind} ${r + 1}`, { exact: true }).fill(row.label)
+      if (index === 0) {
+        if (row.mfi !== null) await page.getByLabel(`MFI for ${row.label}`, { exact: true }).fill(String(row.mfi))
+        if (row.assigned !== null) await page.getByLabel(`Assigned value for ${row.label}`, { exact: true }).fill(String(row.assigned))
+        const include = page.getByLabel(`Include ${row.label} in the fit`, { exact: true })
+        if ((await include.isChecked()) !== row.included) await include.click()
+      } else {
+        if (row.mfi !== null) await page.getByLabel(`Stained MFI for ${row.label}`, { exact: true }).fill(String(row.mfi))
+        if (row.controlMfi !== null) await page.getByLabel(`Control MFI for ${row.label}`, { exact: true }).fill(String(row.controlMfi))
+      }
+    }
+  }
+  await page.waitForTimeout(400)
+}
+
+
 // Every page in the suite, each exercised the way a user would, so that any
 // lazily triggered request fires.
 await page.goto(ORIGIN + '/', { waitUntil: 'networkidle' })
@@ -143,16 +186,80 @@ await page.waitForTimeout(1000)
 
 const uiFailures = []
 
+/*
+ * NOTHING IS STORED, asserted by counting rather than by inspecting what is
+ * left over: an Object.keys(localStorage) at the end proves only that nothing
+ * survived. Every Storage method is wrapped before the page's own code runs,
+ * in a context of its own so this script's other sections cannot touch it.
+ * One foreign key and one key an earlier version of this tool wrote are seeded
+ * first; both must be there, byte for byte, at the end, and the page must have
+ * made no storage call at all across a full session that includes a reload.
+ */
+{
+  const FOREIGN_KEY = 'check-network.foreign'
+  const FOREIGN_VALUE = 'seeded-by-check-network, must survive untouched'
+  const LEGACY_VALUE = JSON.stringify({ kitId: 'qsc-mouse', standards: [{ id: 'x', label: 'Population 1', mfi: 1, assigned: 1, included: true }], samples: [], options: {} })
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } })
+  await ctx.addInitScript(({ FOREIGN_KEY, FOREIGN_VALUE, LEGACY_VALUE }) => {
+    const calls = []
+    const proto = Storage.prototype
+    const originalSetItem = proto.setItem
+    if (!sessionStorage.getItem('__seeded')) {
+      originalSetItem.call(window.localStorage, FOREIGN_KEY, FOREIGN_VALUE)
+      originalSetItem.call(window.localStorage, 'adc.state.v1', LEGACY_VALUE)
+      originalSetItem.call(window.sessionStorage, '__seeded', '1')
+    }
+    for (const method of ['getItem', 'setItem', 'removeItem', 'clear', 'key']) {
+      const original = proto[method]
+      proto[method] = function (...args) {
+        calls.push(`${this === window.sessionStorage ? 'sessionStorage' : 'localStorage'}.${method}(${String(args[0] ?? '')})`)
+        return original.apply(this, args)
+      }
+    }
+    Object.defineProperty(window, '__storageCalls', { value: calls })
+  }, { FOREIGN_KEY, FOREIGN_VALUE, LEGACY_VALUE })
+  const s = await ctx.newPage()
+  await s.goto(ORIGIN + '/', { waitUntil: 'networkidle' })
+  const opened = await s.evaluate(() => ({
+    filled: [...document.querySelectorAll('main input[inputmode="decimal"]')].filter((i) => i.value).length,
+    cards: document.querySelectorAll('.result-card').length,
+  }))
+  if (opened.filled > 0 || opened.cards > 0) {
+    uiFailures.push(`antigen density: the page opened with ${opened.filled} filled field(s) and ${opened.cards} result card(s), expected an empty document (an earlier version's stored state must not be read)`)
+  }
+  const callsBeforeReload = await s.evaluate(() => [...window.__storageCalls])
+  await s.getByRole('button', { name: 'Load worked example' }).click()
+  await s.locator('table').first().locator('input[inputmode="decimal"]').first().fill('2100')
+  await s.locator('#conf').selectOption('0.99')
+  await s.waitForTimeout(800)
+  const callsSession = await s.evaluate(() => [...window.__storageCalls])
+  await s.reload({ waitUntil: 'networkidle' })
+  await s.getByRole('button', { name: 'Load worked example' }).click()
+  await s.locator('table').first().locator('input[inputmode="decimal"]').first().fill('2200')
+  await s.waitForTimeout(800)
+  const callsAfterReload = await s.evaluate(() => [...window.__storageCalls])
+  const calls = [...callsBeforeReload, ...callsSession.slice(callsBeforeReload.length), ...callsAfterReload]
+  if (calls.length > 0) uiFailures.push(`antigen density: the page made ${calls.length} browser storage call(s): ${[...new Set(calls)].slice(0, 5).join(', ')}`)
+  const left = await s.evaluate(() => ({ local: Object.fromEntries(Object.entries({ ...localStorage })), session: Object.keys({ ...sessionStorage }).filter((k) => k !== '__seeded') }))
+  if (left.local[FOREIGN_KEY] !== FOREIGN_VALUE) uiFailures.push('antigen density: the seeded foreign key was altered or removed')
+  if (left.local['adc.state.v1'] !== LEGACY_VALUE) uiFailures.push("antigen density: an earlier version's stored state was altered or removed")
+  if (Object.keys(left.local).length !== 2) uiFailures.push(`antigen density: localStorage gained keys: ${Object.keys(left.local).join(', ')}`)
+  if (left.session.length) uiFailures.push(`antigen density: the page wrote sessionStorage: ${left.session.join(', ')}`)
+  await ctx.close()
+}
+
 for (const [name, path] of [['antigen density', '/']]) {
   await page.goto(ORIGIN + path, { waitUntil: 'networkidle' })
+  await page.getByRole('button', { name: 'Load worked example' }).click()
+  await page.waitForTimeout(300)
   await page.waitForTimeout(900)
 
   const structure = await page.evaluate(() => ({
     hasMain: !!document.querySelector('main#main'),
     hasSkipLink: !!document.querySelector('a.skip-link'),
     // The disclosure is rendered by one shared component in both tools.
-    hasPrivacy: /contacts no third party at all/i.test(document.body.innerText),
-    hasClearStorage: !!document.body.innerText.match(/Clear stored data/),
+    hasPrivacy: /your inputs are never transmitted, stored, or logged/i.test(document.body.innerText),
+    offersClearStorage: !!document.body.innerText.match(/Clear stored data/),
     hasSuiteMark: /bench tools/i.test(document.querySelector('.masthead')?.textContent ?? ''),
     hasGuidanceSwitch: !!document.querySelector('[role="switch"]'),
     // Who publishes this, under what terms, and how to reach them. A reader
@@ -173,7 +280,7 @@ for (const [name, path] of [['antigen density', '/']]) {
   if (!structure.hasMain) uiFailures.push(`${name}: no main landmark`)
   if (!structure.hasSkipLink) uiFailures.push(`${name}: no skip link`)
   if (!structure.hasPrivacy) uiFailures.push(`${name}: privacy disclosure missing`)
-  if (!structure.hasClearStorage) uiFailures.push(`${name}: no control to clear stored data`)
+  if (structure.offersClearStorage) uiFailures.push(`${name}: offers to clear stored data, though nothing is stored`)
   if (!structure.hasSuiteMark) uiFailures.push(`${name}: the masthead does not name the suite`)
 
   // The tool switcher marks this tool as the current page, and every sibling
@@ -386,8 +493,7 @@ await page.waitForTimeout(600)
 // what a first-time visitor sees.
 // ---------------------------------------------------------------------------
 await page.goto(ORIGIN + '/', { waitUntil: 'networkidle' })
-await page.evaluate(() => localStorage.clear())
-await page.reload({ waitUntil: 'networkidle' })
+await freshWorkedExample()
 await page.waitForTimeout(700)
 
 const disclosure = await page.evaluate(() => {
@@ -477,70 +583,11 @@ try {
 }
 
 // ---------------------------------------------------------------------------
-// A returning user, whose stored settings predate the options added since.
-//
-// Restoring that payload directly left a new key undefined. The select bound to
-// it rendered uncontrolled and reported its first option, so the interface
-// showed a valid choice while the guard received nothing and accused the user of
-// a mismatch against "undefined". It reproduced only from stored state, which is
-// why nothing constructed from defaults ever saw it.
-// ---------------------------------------------------------------------------
-await page.evaluate(() => {
-  localStorage.setItem(
-    'adc.state.v1',
-    JSON.stringify({
-      kitId: 'qsc-mouse',
-      standards: [
-        { id: 'd0', label: 'Blank', mfi: 210, assigned: null, included: false },
-        { id: 'd1', label: 'Population 1', mfi: 2050, assigned: 8300, included: true },
-        { id: 'd2', label: 'Population 2', mfi: 12900, assigned: 51000, included: true },
-        { id: 'd3', label: 'Population 3', mfi: 39500, assigned: 175000, included: true },
-        { id: 'd4', label: 'Population 4', mfi: 121000, assigned: 512000, included: true },
-      ],
-      samples: [{ id: 's1', label: 'CD19 (NALM-6)', mfi: 8900, controlMfi: 240 }],
-      // Exactly the option set the released version wrote: no antibodyHost,
-      // no saturationConfirmed.
-      options: {
-        standardKind: 'abc',
-        fpRatio: 1,
-        backgroundMode: 'abc',
-        valency: 'bivalent',
-        confidenceLevel: 0.95,
-      },
-    }),
-  )
-})
-await page.reload({ waitUntil: 'networkidle' })
-await page.waitForTimeout(700)
-
-const returning = await page.evaluate(() => ({
-  text: document.body.innerText,
-  host: document.querySelector('#host')?.value ?? null,
-  criticals: document.querySelectorAll('[role="alert"]').length,
-  value: document.querySelector('.result-card .hero .value')?.innerText ?? '',
-}))
-if (/undefined/i.test(returning.text)) {
-  uiFailures.push('antigen density: restored state renders the word "undefined" to the user')
-}
-if (returning.criticals > 0) {
-  uiFailures.push(
-    `antigen density: restored state raised ${returning.criticals} critical flag(s) on settings the user never changed`,
-  )
-}
-if (returning.host !== 'unstated') {
-  uiFailures.push(`antigen density: restored host select reads "${returning.host}", expected unstated`)
-}
-if (!returning.value.startsWith('35,63')) {
-  uiFailures.push(`antigen density: restored state computed "${returning.value}", expected 35,636`)
-}
-
-// ---------------------------------------------------------------------------
 // An invalidated calibration must reach the figures it invalidates. The curve
 // and the results are separate panels, and a reader who scrolls to their number
 // would otherwise never pass the alarm.
 // ---------------------------------------------------------------------------
-await page.evaluate(() => localStorage.clear())
-await page.reload({ waitUntil: 'networkidle' })
+await freshWorkedExample()
 await page.waitForTimeout(600)
 await page.selectOption('#host', 'rat')
 await page.waitForTimeout(600)
@@ -598,7 +645,6 @@ try {
   uiFailures.push(`antigen density: CSV export under a mismatch failed (${String(e).slice(0, 70)})`)
 }
 
-await page.evaluate(() => localStorage.clear())
 
 // ---------------------------------------------------------------------------
 // Whether the calibration is usable, said where it was built.
@@ -608,8 +654,7 @@ await page.evaluate(() => localStorage.clear())
 // calibration must also withhold the figure it cannot support: a number on the
 // page invites being written down, whatever sits above it.
 // ---------------------------------------------------------------------------
-await page.evaluate(() => localStorage.clear())
-await page.reload({ waitUntil: 'networkidle' })
+await freshWorkedExample()
 await page.waitForTimeout(600)
 
 const verdictOk = await page.evaluate(() => ({
@@ -656,7 +701,6 @@ if (inverted.bands > 0) {
   uiFailures.push('antigen density: a density band was offered on an unusable calibration')
 }
 
-await page.evaluate(() => localStorage.clear())
 
 // ---------------------------------------------------------------------------
 // A population that disagrees with the rest of the table.
@@ -666,8 +710,7 @@ await page.evaluate(() => localStorage.clear())
 // the top population, which leaves the order intact, so the monotonicity check
 // stays silent and nothing else locates it.
 // ---------------------------------------------------------------------------
-await page.evaluate(() => localStorage.clear())
-await page.reload({ waitUntil: 'networkidle' })
+await freshWorkedExample()
 await page.waitForTimeout(600)
 
 const cleanFlags = await page.evaluate(() => document.querySelectorAll('.row-notes li').length)
@@ -701,7 +744,6 @@ if (rowFlag.marked[0] !== 'Population 4') {
   uiFailures.push(`antigen density: the marked row is ${JSON.stringify(rowFlag.marked)}, expected Population 4`)
 }
 
-await page.evaluate(() => localStorage.clear())
 
 // ---------------------------------------------------------------------------
 // Pasting a column of thousands-formatted values.
@@ -712,8 +754,7 @@ await page.evaluate(() => localStorage.clear())
 // never affected, because typing strips separators, which is why it went
 // unnoticed. This drives the real path rather than the parser.
 // ---------------------------------------------------------------------------
-await page.evaluate(() => localStorage.clear())
-await page.reload({ waitUntil: 'networkidle' })
+await freshWorkedExample()
 await page.waitForTimeout(600)
 await page.getByRole('button', { name: 'Clear all' }).click()
 await page.waitForTimeout(400)
@@ -749,7 +790,6 @@ if (!/thousands separators/i.test(pasted.notice)) {
   uiFailures.push('antigen density: the reader was not told how the commas in their paste were read')
 }
 
-await page.evaluate(() => localStorage.clear())
 
 // ---------------------------------------------------------------------------
 // What is wrong with one value, said at the field it was typed into.
@@ -761,8 +801,7 @@ await page.evaluate(() => localStorage.clear())
 // saying so, and a control brighter than the sample it belongs to, which is
 // usually two columns entered the wrong way round.
 // ---------------------------------------------------------------------------
-await page.evaluate(() => localStorage.clear())
-await page.reload({ waitUntil: 'networkidle' })
+await freshWorkedExample()
 await page.waitForTimeout(600)
 
 // The shipped example carries a row named "Blank" with no certified value,
@@ -793,8 +832,7 @@ if (!/certified value/i.test(orphan.text)) {
   uiFailures.push(`antigen density: nothing names Population 3 as missing its certified value (found "${orphan.text.slice(0, 70)}")`)
 }
 
-await page.evaluate(() => localStorage.clear())
-await page.reload({ waitUntil: 'networkidle' })
+await freshWorkedExample()
 await page.waitForTimeout(600)
 
 // The control at 9,600 against a stained reading of 8,900. A real population
@@ -822,7 +860,6 @@ if (!/other way round/i.test(swapped.text)) {
   uiFailures.push(`antigen density: nothing names CD19 as having a brighter control (found "${swapped.text.slice(0, 70)}")`)
 }
 
-await page.evaluate(() => localStorage.clear())
 
 // ---------------------------------------------------------------------------
 // Asking a question at a card.
@@ -921,7 +958,6 @@ else {
   }
 }
 
-await page.evaluate(() => localStorage.clear())
 
 // ---------------------------------------------------------------------------
 // A table whose two columns are the same numbers.
@@ -934,8 +970,7 @@ await page.evaluate(() => localStorage.clear())
 // arithmetically there is nothing wrong.
 // ---------------------------------------------------------------------------
 await page.goto(ORIGIN + '/', { waitUntil: 'networkidle' })
-await page.evaluate(() => localStorage.clear())
-await page.reload({ waitUntil: 'networkidle' })
+await freshWorkedExample()
 await page.waitForTimeout(700)
 await page.getByRole('button', { name: 'Clear all' }).click()
 await page.waitForTimeout(400)
@@ -978,7 +1013,6 @@ if (!/same numbers/i.test(identity.notice)) {
   uiFailures.push('antigen density: pasting two identical columns raised no notice')
 }
 
-await page.evaluate(() => localStorage.clear())
 
 // ---------------------------------------------------------------------------
 // A reason not to report, against a caveat on reporting.
@@ -987,8 +1021,8 @@ await page.evaluate(() => localStorage.clear())
 // by "Caution" against "Note". A card carried "do not report this figure"
 // immediately above an interpretation sentence about that figure.
 // ---------------------------------------------------------------------------
-await page.reload({ waitUntil: 'networkidle' })
-await page.waitForTimeout(700)
+await freshWorkedExample()
+await page.waitForTimeout(400)
 // The host mismatch produces a sample-level critical while leaving a number.
 await page.locator('#host').selectOption('rat').catch(() => {})
 await page.waitForTimeout(700)
@@ -1035,7 +1069,6 @@ if (severity.criticals === 0) {
   }
 }
 
-await page.evaluate(() => localStorage.clear())
 
 // ---------------------------------------------------------------------------
 // The answer, on a phone, and the table that does not move under the cursor.
@@ -1055,8 +1088,7 @@ await page.evaluate(() => localStorage.clear())
 // sentence now sits below the table, where it moves nothing.
 // ---------------------------------------------------------------------------
 await page.goto(ORIGIN + '/', { waitUntil: 'networkidle' })
-await page.evaluate(() => localStorage.clear())
-await page.reload({ waitUntil: 'networkidle' })
+await freshWorkedExample()
 await page.waitForTimeout(700)
 
 // --- the wide layout, where the left column must stay one flow ---
@@ -1220,7 +1252,6 @@ for (const text of prose.everything) {
   }
 }
 
-await page.evaluate(() => localStorage.clear())
 
 // ---------------------------------------------------------------------------
 // What the origin's own robots.txt says.
@@ -1297,8 +1328,7 @@ await page.evaluate(() => localStorage.clear())
 // ---------------------------------------------------------------------------
 for (const tool of TOOLS) {
   await page.goto(ORIGIN + tool.path, { waitUntil: 'networkidle' })
-  await page.evaluate(() => localStorage.clear())
-  await page.reload({ waitUntil: 'networkidle' })
+  await freshWorkedExample()
   await page.waitForTimeout(700)
 
   // Use the tool the way a reader would, so anything written lazily is written.
@@ -1358,7 +1388,6 @@ for (const tool of TOOLS) {
   }
 }
 
-await page.evaluate(() => localStorage.clear())
 
 // ---------------------------------------------------------------------------
 // A row added to the table is a row of the same table.
@@ -1375,8 +1404,7 @@ await page.evaluate(() => localStorage.clear())
 // then ignored. One decimal place everywhere, matching the flag text.
 // ---------------------------------------------------------------------------
 await page.goto(ORIGIN + '/', { waitUntil: 'networkidle' })
-await page.evaluate(() => localStorage.clear())
-await page.reload({ waitUntil: 'networkidle' })
+await freshWorkedExample()
 await page.waitForTimeout(700)
 await page.getByRole('button', { name: 'Load worked example' }).click()
 await page.waitForTimeout(500)
@@ -1419,7 +1447,6 @@ for (const share of shares) {
   }
 }
 
-await page.evaluate(() => localStorage.clear())
 
 // ---------------------------------------------------------------------------
 // A verdict is withheld where the measurement cannot support one.
@@ -1436,10 +1463,7 @@ await page.evaluate(() => localStorage.clear())
 // that is not visible from the flag level alone.
 // ---------------------------------------------------------------------------
 await page.goto(ORIGIN + '/', { waitUntil: 'networkidle' })
-await page.evaluate(() => {
-  localStorage.setItem(
-    'adc.state.v1',
-    JSON.stringify({
+await setTables({
       kitId: 'qsc-mouse',
       standards: [
         { id: 'd0', label: 'Blank', mfi: 210, assigned: null, included: false },
@@ -1464,10 +1488,7 @@ await page.evaluate(() => {
         saturationConfirmed: true,
         confidenceLevel: 0.95,
       },
-    }),
-  )
-})
-await page.reload({ waitUntil: 'networkidle' })
+    })
 await page.waitForTimeout(700)
 
 const verdicts = await page.evaluate(() =>
@@ -1534,7 +1555,6 @@ if (!dominant || !material) {
   }
 }
 
-await page.evaluate(() => localStorage.clear())
 
 // ---------------------------------------------------------------------------
 // A licence claim and the source that backs it, or neither.
@@ -1601,10 +1621,7 @@ if (!repoDeclaration) {
 // which of two correct mechanisms the reader met.
 // ---------------------------------------------------------------------------
 await page.goto(ORIGIN + '/', { waitUntil: 'networkidle' })
-await page.evaluate(() => {
-  localStorage.setItem(
-    'adc.state.v1',
-    JSON.stringify({
+await setTables({
       kitId: 'qsc-mouse',
       standards: [
         { id: 'd0', label: 'Blank', mfi: 210, assigned: null, included: false },
@@ -1626,10 +1643,7 @@ await page.evaluate(() => {
         saturationConfirmed: true,
         confidenceLevel: 0.95,
       },
-    }),
-  )
-})
-await page.reload({ waitUntil: 'networkidle' })
+    })
 await page.waitForTimeout(700)
 
 const impossible = await page.evaluate(() => {
@@ -1658,7 +1672,6 @@ if (/^[\d,]/.test(impossible.density)) {
   )
 }
 
-await page.evaluate(() => localStorage.clear())
 
 // ---------------------------------------------------------------------------
 // The one thing no arithmetic here can check, written down.
@@ -1675,8 +1688,7 @@ await page.evaluate(() => localStorage.clear())
 // image into a manuscript.
 // ---------------------------------------------------------------------------
 await page.goto(ORIGIN + '/', { waitUntil: 'networkidle' })
-await page.evaluate(() => localStorage.clear())
-await page.reload({ waitUntil: 'networkidle' })
+await freshWorkedExample()
 await page.waitForTimeout(700)
 await page.getByRole('button', { name: 'Load worked example' }).click()
 await page.waitForTimeout(500)
@@ -1722,13 +1734,13 @@ if (!onFigure) {
   )
 }
 
-// It is transcribed from a vial, so losing it on reload would mean transcribing
-// it again, which is how a field stops being filled in.
+// Nothing is stored, so a lot typed before a reload is gone after it, like every
+// other value: the page must not bring it back from anywhere.
 await page.reload({ waitUntil: 'networkidle' })
-await page.waitForTimeout(700)
-const restoredLot = await page.evaluate(() => document.querySelector('#lot')?.value ?? '')
-if (restoredLot !== LOT) {
-  uiFailures.push(`antigen density: the bead lot restored as "${restoredLot}" rather than "${LOT}"`)
+await page.waitForTimeout(500)
+const lotAfterReload = await page.evaluate(() => document.querySelector('#lot')?.value ?? '')
+if (lotAfterReload !== '') {
+  uiFailures.push(`antigen density: the bead lot came back after a reload as "${lotAfterReload}", though nothing is stored`)
 }
 
 // A label alone is not work in progress. Typing only a lot must leave storage
@@ -1736,7 +1748,6 @@ if (restoredLot !== LOT) {
 // privacy disclosure implies.
 await page.getByRole('button', { name: 'Clear all' }).click()
 await page.waitForTimeout(400)
-await page.evaluate(() => localStorage.clear())
 await page.fill('#lot', 'B02-1177')
 await page.waitForTimeout(600)
 const wroteOnLotAlone = await page.evaluate(() => localStorage.getItem('adc.state.v1') !== null)
@@ -1744,7 +1755,6 @@ if (wroteOnLotAlone) {
   uiFailures.push('antigen density: typing only a bead lot wrote a document to browser storage')
 }
 
-await page.evaluate(() => localStorage.clear())
 
 // ---------------------------------------------------------------------------
 // A paste says what it did not cover.
@@ -1762,16 +1772,12 @@ await page.evaluate(() => localStorage.clear())
 // typed; keeping them silently is the defect.
 // ---------------------------------------------------------------------------
 await page.goto(ORIGIN + '/', { waitUntil: 'networkidle' })
-await page.evaluate(() => localStorage.clear())
-await page.reload({ waitUntil: 'networkidle' })
+await freshWorkedExample()
 await page.waitForTimeout(600)
 
 /** Seed a six population standard, then paste a four population one over it. */
 const seedAndPaste = async (rows) => {
-  await page.evaluate(() => {
-    localStorage.setItem(
-      'adc.state.v1',
-      JSON.stringify({
+  await setTables({
         kitId: 'qsc-mouse',
         lotId: '',
         standards: [
@@ -1792,10 +1798,7 @@ const seedAndPaste = async (rows) => {
           saturationConfirmed: true,
           confidenceLevel: 0.95,
         },
-      }),
-    )
-  })
-  await page.reload({ waitUntil: 'networkidle' })
+      })
   await page.waitForTimeout(700)
   await page.evaluate((text) => {
     const cell = document.querySelector('input[aria-label^="MFI for"]')
@@ -1896,10 +1899,7 @@ if (covered.text) {
 // The same paste over the samples table, which is the worse of the two. A
 // stale standard is caught downstream by the ratio consistency check; a stale
 // sample is quantified and reported like any other, and nothing catches it.
-await page.evaluate(() => {
-  localStorage.setItem(
-    'adc.state.v1',
-    JSON.stringify({
+await setTables({
       kitId: 'qsc-mouse',
       lotId: '',
       standards: [
@@ -1923,10 +1923,7 @@ await page.evaluate(() => {
         saturationConfirmed: true,
         confidenceLevel: 0.95,
       },
-    }),
-  )
-})
-await page.reload({ waitUntil: 'networkidle' })
+    })
 await page.waitForTimeout(700)
 await page.evaluate(() => {
   const cell = document.querySelector('input[aria-label^="Stained MFI for"]')
@@ -1955,7 +1952,6 @@ if (!staleSamples) {
   )
 }
 
-await page.evaluate(() => localStorage.clear())
 
 // ---------------------------------------------------------------------------
 // What a reader needs at the moment they decide to use a figure from this tool.
@@ -2052,7 +2048,6 @@ if (cleared.join() === before.join()) {
   }
 }
 
-await page.evaluate(() => localStorage.clear())
 
 // ---------------------------------------------------------------------------
 // The headline does not endorse a reading no instrument produces.
@@ -2068,8 +2063,7 @@ await page.evaluate(() => localStorage.clear())
 // how the defect was found and how a reader would meet it.
 // ---------------------------------------------------------------------------
 await page.goto(ORIGIN + '/', { waitUntil: 'networkidle' })
-await page.evaluate(() => localStorage.clear())
-await page.reload({ waitUntil: 'networkidle' })
+await freshWorkedExample()
 await page.waitForTimeout(600)
 // The worked example rather than an empty table, and the paste starts at
 // Population 1 rather than at the first cell. The example's four populations
@@ -2120,7 +2114,6 @@ if (!/^[\d,]/.test(endorsed.density)) {
   )
 }
 
-await page.evaluate(() => localStorage.clear())
 
 const fontsApplied = await page.evaluate(async () => {
   await document.fonts.ready

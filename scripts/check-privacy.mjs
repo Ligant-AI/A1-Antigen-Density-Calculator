@@ -54,6 +54,15 @@ const REPO_URL = (() => {
 })()
 
 
+// Cloudflare Web Analytics, which the suite's privacy statement discloses, and
+// nothing else: the beacon script at exactly this path, in script-src only. The
+// second token covers the versioned path the edge actually serves. Its report
+// goes to /cdn-cgi/rum on this origin, so connect-src stays 'self'.
+const ANALYTICS_SCRIPT = new Set([
+  'https://static.cloudflareinsights.com/beacon.min.js',
+  'https://static.cloudflareinsights.com/beacon.min.js/',
+])
+
 // CSP tokens that are keywords or schemes rather than remote origins.
 const CSP_SAFE = new Set([
   "'self'", "'none'", "'unsafe-inline'", "'wasm-unsafe-eval'", "'strict-dynamic'",
@@ -97,6 +106,7 @@ if (!existsSync(headersPath)) {
       const [name, ...values] = directive.split(/\s+/)
       for (const value of values) {
         if (CSP_SAFE.has(value)) continue
+        if (name === 'script-src' && ANALYTICS_SCRIPT.has(value)) continue
         if (/^https?:\/\//.test(value) || value.includes('.') || value === '*') {
           fail('csp', `${name} allows the external origin ${value}`)
         }

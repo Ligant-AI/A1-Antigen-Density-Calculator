@@ -97,6 +97,11 @@ p  { margin: 0; }
 .app { max-width: 1400px; margin: 0 auto; padding: 0 24px 72px; }
 
 /* The header and footer are the suite's: @ligant/bench-chrome/chrome.css. */
+
+/* Links in the page's own text, set as the footer sets them: the Privacy
+   Policy under Method and limitations is the one there is. */
+.method-panel a { color: var(--text-primary); text-decoration: underline; text-underline-offset: 2px; }
+.method-panel a:hover { color: var(--brand-teal); }
 .eyebrow {
   font-size: 11px;
   font-weight: 600;
