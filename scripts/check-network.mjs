@@ -48,12 +48,18 @@ if (!SITE_URL) {
 /**
  * The tool registry, read the same way and for the same reason: this script
  * must not carry its own copy of what the site contains.
+ *
+ * Only this build's own entry. The registry also lists the sibling tools for
+ * the masthead's switcher, but those are separate deployments: served from
+ * here, their paths would only strip back to this tool's own page and assert
+ * it again under a sibling's name.
  */
+const TOOL_PATH = (readFileSync('src/lib/site.ts', 'utf8').match(/TOOL_PATH\s*=\s*['"]([^'"]+)['"]/) ?? [])[1]
 const TOOLS = [...readFileSync('src/lib/site.ts', 'utf8').matchAll(
   /\{\s*id:\s*'([^']+)'[^}]*?path:\s*'([^']+)'[^}]*?\}/g,
-)].map(([, id, path]) => ({ id, path }))
+)].map(([, id, path]) => ({ id, path })).filter((tool) => tool.path === TOOL_PATH)
 if (TOOLS.length === 0) {
-  console.error('Could not read the tool registry from src/lib/site.ts.')
+  console.error('Could not read this tool\'s own entry (TOOL_PATH) from the registry in src/lib/site.ts.')
   process.exit(1)
 }
 
@@ -171,6 +177,22 @@ for (const [name, path] of [['antigen density', '/']]) {
   if (!structure.hasPrivacy) uiFailures.push(`${name}: privacy disclosure missing`)
   if (!structure.hasClearStorage) uiFailures.push(`${name}: no control to clear stored data`)
   if (!structure.hasSuiteMark) uiFailures.push(`${name}: the masthead does not name the suite`)
+
+  // The tool switcher marks this tool as the current page, and every sibling
+  // link is ABSOLUTE to SITE_URL. A root-relative link resolves against
+  // whichever origin the reader is on: correct from the router, a 404 from
+  // this project's own *.pages.dev, where the sibling paths do not exist.
+  const navCurrent = await page.locator('.tool-nav [aria-current="page"]').allTextContents()
+  if (navCurrent.length !== 1) {
+    uiFailures.push(`${name}: the tool switcher marks ${navCurrent.length} tools as current, not 1`)
+  }
+  const navHrefs = await page.locator('.tool-nav a').evaluateAll((els) => els.map((el) => el.getAttribute('href')))
+  if ((await page.locator('.tool-nav li a').count()) === 0) {
+    uiFailures.push(`${name}: the tool switcher has no sibling links`)
+  }
+  for (const href of navHrefs) {
+    if (!href?.startsWith(SITE_URL)) uiFailures.push(`${name}: a tool-switcher link is not absolute to ${SITE_URL}: ${href}`)
+  }
   for (const [what, present] of Object.entries(structure.footer)) {
     if (!present) uiFailures.push(`${name}: the footer does not carry the ${what}`)
   }
@@ -1247,8 +1269,21 @@ await page.evaluate(() => localStorage.clear())
     }
   }
 
-  if (!robots.includes(`Sitemap: ${SITE_URL}/sitemap.xml`)) {
-    uiFailures.push('robots.txt: no sitemap is advertised')
+  // Under this tool's own path. The root /sitemap.xml is the catalog's: the
+  // router forwards only TOOL_PATH here, so a root address named a file this
+  // build does not serve.
+  const sitemapUrl = `${SITE_URL}${TOOL_PATH}sitemap.xml`
+  if (!robots.includes(`Sitemap: ${sitemapUrl}`)) {
+    uiFailures.push(`robots.txt: does not advertise this tool's own sitemap, ${sitemapUrl}`)
+  }
+
+  // And the advertised address is served, with this tool's page in it. Fetched
+  // under TOOL_PATH, which the local server strips the way the router does.
+  const sitemap = await fetch(ORIGIN + TOOL_PATH + 'sitemap.xml')
+  if (!sitemap.ok) {
+    uiFailures.push(`sitemap.xml: ${TOOL_PATH}sitemap.xml returned ${sitemap.status}`)
+  } else if (!(await sitemap.text()).includes(`<loc>${SITE_URL}${TOOL_PATH}</loc>`)) {
+    uiFailures.push(`sitemap.xml: does not list ${SITE_URL}${TOOL_PATH}`)
   }
 }
 

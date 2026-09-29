@@ -2,15 +2,14 @@ import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { SITE_URL, TOOLS } from './src/lib/site'
+import { SITE_URL, TOOL_PATH } from './src/lib/site'
 
 /**
  * Derives everything that needs to know the site's origin from `src/lib/site.ts`.
  *
  * `robots.txt` and `sitemap.xml` used to be static files in `public/` with the
- * origin written into them by hand, which meant a new tool silently went
- * missing from the sitemap. They are generated from the tool registry instead,
- * and the HTML entry points carry a `__SITE_URL__` placeholder rather than a
+ * origin written into them by hand. They are generated from `SITE_URL` and
+ * `TOOL_PATH` instead, and the HTML entry points carry a `__SITE_URL__` placeholder rather than a
  * literal domain, so moving the site is a one line change.
  */
 function siteMetadata(): Plugin {
@@ -58,6 +57,11 @@ function siteMetadata(): Plugin {
         // one inside the same file, and how a given crawler resolves that is not
         // something this repository can test. The managed setting is the thing
         // to turn off.
+        //
+        // The sitemap is advertised under TOOL_PATH, not at the site root. The
+        // router forwards only TOOL_PATH to this project, so this build's
+        // sitemap is served at `${SITE_URL}${TOOL_PATH}sitemap.xml`; the root
+        // `/sitemap.xml` belongs to the catalog homepage.
         source: [
           '# Ligant Bench Tools. Free tools for cell therapy research.',
           '#',
@@ -72,29 +76,31 @@ function siteMetadata(): Plugin {
           'Content-Signal: search=yes, ai-input=yes, ai-train=no, use=reference',
           'Allow: /',
           '',
-          `Sitemap: ${SITE_URL}/sitemap.xml`,
+          `Sitemap: ${SITE_URL}${TOOL_PATH}sitemap.xml`,
           '',
         ].join('\n'),
       })
 
-      const urls = TOOLS.map(
-        (tool) =>
-          [
-            '  <url>',
-            `    <loc>${SITE_URL}${tool.path}</loc>`,
-            '    <changefreq>monthly</changefreq>',
-            `    <priority>${tool.priority.toFixed(1)}</priority>`,
-            '  </url>',
-          ].join('\n'),
-      ).join('\n')
-
+      /*
+       * This deployment's own page, and only it.
+       *
+       * The sibling tools are separate deployments that each emit a sitemap for
+       * their own address. Listing them here as well would publish two
+       * declarations of the same URL from two origins, which is the thing a
+       * sitemap exists to avoid. `TOOLS` remains the navigation registry; this
+       * is the subset this build is responsible for.
+       */
       this.emitFile({
         type: 'asset',
         fileName: 'sitemap.xml',
         source: [
           '<?xml version="1.0" encoding="UTF-8"?>',
           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
-          urls,
+          '  <url>',
+          `    <loc>${SITE_URL}${TOOL_PATH}</loc>`,
+          '    <changefreq>monthly</changefreq>',
+          '    <priority>1.0</priority>',
+          '  </url>',
           '</urlset>',
           '',
         ].join('\n'),

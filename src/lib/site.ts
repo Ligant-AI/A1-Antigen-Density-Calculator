@@ -3,11 +3,24 @@
  *
  * Single source of truth for both. The navigation, the sitemap, the canonical
  * links and the social metadata are all derived from this, so adding a tool
- * cannot leave the sitemap or the tool switcher behind. Plain data with no
- * browser dependency, because the build imports it too.
+ * cannot leave the tool switcher behind. Plain data with no browser
+ * dependency, because the build imports it too.
+ *
+ * The check scripts read this file TEXTUALLY, by regular expression, because
+ * they are plain Node. Every constant below is assigned a single-quoted string
+ * literal on one line, and every TOOLS entry is a one-line object literal with
+ * `id` before `path`. A reformat that wraps one across two lines does not fail
+ * the typecheck; it makes a check silently stop finding what it is checking.
  */
 
 export const SITE_URL = 'https://benchtools.ligant.ai'
+
+/** This tool's own mount point under `SITE_URL`, where the Worker proxies it. */
+export const TOOL_PATH = '/antigen-density-calculator/'
+
+/** The parent site, one level up from the suite. Not `SITE_URL`: that is the
+ *  Bench Tools suite's own address, this is Ligant's. */
+export const LIGANT_URL = 'https://ligant.ai/'
 
 /**
  * The released version, cited on the page and stamped into every export.
@@ -83,20 +96,36 @@ export const PAPER_TITLE =
  * follow, which is also why no check here can confirm it resolves: this tool
  * contacts no third party, and that includes to test its own links.
  */
-export const REPO_URL: string | null = 'https://github.com/abmodi-ai/Ligant.ai-Antigen-Density-Calculator'
+export const REPO_URL: string | null = 'https://github.com/Ligant-AI/A1-Antigen-Density-Calculator'
 
 export interface Tool {
   id: string
   /** Label in the tool switcher. */
   name: string
-  /** Path from the site root, always with a trailing slash except the root. */
+  /** Path from the site root, always with a trailing slash. */
   path: string
-  /** Relative priority in the sitemap. */
-  priority: number
 }
 
+/**
+ * The suite, as the masthead's tool switcher presents it.
+ *
+ * The same five entries, in the same order and with the same labels, as every
+ * sibling's list (the Reconstitution tool's, as deployed on 29 September 2026),
+ * so the navigation reads identically whichever tool the reader is on. A change
+ * here belongs in the siblings' lists too. Add a tool only once it is live at
+ * `path`: a pill that 404s is worse than a tool the navigation does not
+ * mention yet.
+ *
+ * The entry whose `path` is `TOOL_PATH` renders as the current page rather
+ * than as a link. The others are separate deployments, so they are here for a
+ * reader to reach, not for this build's sitemap or checks to cover.
+ */
 export const TOOLS: readonly Tool[] = [
-  { id: 'antigen-density', name: 'Antigen density', path: '/antigen-density-calculator/', priority: 1.0 },
+  { id: 'antibody-titration', name: 'Antibody titration', path: '/antibody-titration-planner/' },
+  { id: 'molarity', name: 'Molarity', path: '/molarity-converter/' },
+  { id: 'antigen-density', name: 'Antigen density', path: '/antigen-density-calculator/' },
+  { id: 'dilution', name: 'Dilution', path: '/dilution-planner/' },
+  { id: 'reconstitution', name: 'Reconstitution', path: '/reconstitution/' },
 ] as const
 
 export type ToolId = (typeof TOOLS)[number]['id']
