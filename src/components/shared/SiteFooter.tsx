@@ -21,6 +21,7 @@ import {
   CITATION_DOI,
   PAPER_DOI,
   PAPER_TITLE,
+  PRIVACY_URL,
   RELEASE_YEAR,
   REPO_URL,
   SITE_URL,
@@ -94,8 +95,12 @@ export function SiteFooter() {
       <div className="footer-grid">
         <div className="footer-prose">
           <p>
-            Ligant Bench Tools are free and open source under Apache 2.0, for research and
-            educational use. They run entirely in your browser: no data is transmitted.
+            Ligant Bench Tools are free and open source under Apache 2.0, for research and educational use.{' '}
+            <strong>Privacy.</strong> Everything you enter into this tool stays on your computer. Calculations run entirely in your browser, and your inputs are never transmitted, stored, or logged. We use Cloudflare Web Analytics to count visits and measure how quickly this page loads, so we can see which tools are used and improve them. It sets no cookie, does not identify you, and never reads what you type.{' '}
+            <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer">
+              Privacy Policy
+              <span className="visually-hidden"> (opens in a new tab)</span>
+            </a>
           </p>
           {/*
             The claim above and the evidence for it, in adjacent sentences. An
