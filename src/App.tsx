@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { BEAD_KITS, standardsForKit, type BeadKit } from './lib/kits'
 import {
   DEFAULT_OPTIONS,
@@ -11,7 +11,6 @@ import {
   type QuantifyOptions,
   type Sample,
 } from './lib/quantify'
-import { persist, restoreOptions } from './lib/persist'
 import { APP_VERSION } from './lib/site'
 import { exportChartSvg, exportResultsCsv } from './lib/export'
 import { formatR2 } from './lib/format'
@@ -33,9 +32,16 @@ const CORPUS = [...ANTIGEN_DENSITY_GUIDANCE, ...SHARED_GUIDANCE]
 
 // APP_VERSION lives in src/lib/site.ts, beside the origin, so the footer's
 // citation and the version stamped into every export cannot disagree.
-const STORAGE_KEY = 'adc.state.v1'
 
-interface PersistedState {
+/*
+ * NOTHING IS STORED. The tool once kept the values on screen in origin storage
+ * (`adc.state.v1`) so a reload did not discard work in progress. The suite's
+ * privacy statement says inputs are never stored, and the sibling tools keep
+ * nothing, so this one keeps nothing either: every load starts from an empty
+ * document, and the worked example is one press of a button away. A key an
+ * earlier version wrote is not read, and not touched.
+ */
+interface ToolState {
   kitId: string
   /**
    * Which lot of beads the certified values were transcribed from.
@@ -54,7 +60,7 @@ interface PersistedState {
 }
 
 /** A worked Quantum Simply Cellular run, including one deliberately out-of-range sample. */
-function demoState(): PersistedState {
+function demoState(): ToolState {
   return {
     kitId: 'qsc-mouse',
     // Left empty deliberately. A lot number invented for a demonstration is
@@ -77,7 +83,7 @@ function demoState(): PersistedState {
   }
 }
 
-function emptyState(kit: BeadKit): PersistedState {
+function emptyState(kit: BeadKit): ToolState {
   return {
     kitId: kit.id,
     lotId: '',
@@ -90,49 +96,16 @@ function emptyState(kit: BeadKit): PersistedState {
   }
 }
 
-function loadState(): PersistedState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<PersistedState>
-      if (parsed.standards?.length && parsed.options) {
-        return {
-          kitId: typeof parsed.kitId === 'string' ? parsed.kitId : BEAD_KITS[0].id,
-          lotId: typeof parsed.lotId === 'string' ? parsed.lotId : '',
-          standards: parsed.standards,
-          samples: parsed.samples ?? [],
-          // Settings written before an option existed have no key for it, so
-          // they are merged over the defaults rather than used as they stand.
-          options: restoreOptions(parsed.options, DEFAULT_OPTIONS),
-        }
-      }
-    }
-  } catch {
-    // Private browsing, blocked site data, or a corrupt payload: fall through.
-  }
-  return demoState()
-}
-
 export default function App() {
-  const [state, setState] = useState<PersistedState>(loadState)
+  const [state, setState] = useState<ToolState>(() => emptyState(BEAD_KITS[0]))
   // Clearing wipes transcribed data in one click, so it stays reversible.
   // What to go back to, and what the reader did that they may want undone. The
   // label travels with the state because two different actions now push here
   // and "Undo clear" beside a kit change would name the wrong one.
-  const [undoState, setUndoState] = useState<{ state: PersistedState; label: string } | null>(null)
+  const [undoState, setUndoState] = useState<{ state: ToolState; label: string } | null>(null)
 
   const kit = BEAD_KITS.find((k) => k.id === state.kitId) ?? BEAD_KITS[0]
   const { standards, samples, options, lotId } = state
-
-  // A table with no number in it is not work in progress, so nothing is kept.
-  // Labels alone do not count: they arrive with the empty document.
-  const hasEntries =
-    standards.some((s) => s.mfi !== null || s.assigned !== null) ||
-    samples.some((s) => s.mfi !== null || s.controlMfi !== null)
-
-  useEffect(() => {
-    persist(STORAGE_KEY, state, hasEntries)
-  }, [state, hasEntries])
 
   const curveResult = useMemo(() => fitStandardCurve(standards), [standards])
   const curve: CurveResult | null = 'error' in curveResult ? null : curveResult
@@ -442,14 +415,7 @@ export default function App() {
             flattening this column and reordering, which needs no second grid
             row at all.
           */}
-          <Method
-            storageKeys={[STORAGE_KEY]}
-            onClearStorage={() => {
-              // Resetting the tool is what removes the key: the empty document
-              // it produces has nothing to keep, so the effect above clears it.
-              setState(emptyState(kit))
-            }}
-          />
+          <Method />
 
         </div>
 
@@ -556,8 +522,7 @@ export default function App() {
         cells were acquired under identical cytometer settings. Antibody binding capacity is not
         equivalent to antigen copy number: epitope accessibility, binding valency, conjugate
         performance, and antigen internalisation all intervene between the two quantities. All
-        computation is performed locally in this browser. Nothing you enter is transmitted, and the
-        page contacts no third party.
+        computation is performed locally in this browser. Nothing you enter is transmitted.
       </p>
 
       <div className="colophon">

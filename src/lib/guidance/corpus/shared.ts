@@ -1,3 +1,4 @@
+import { PRIVACY_STATEMENT } from '@ligant/bench-chrome'
 import type { GuidanceEntry } from '../types'
 
 /** Concepts that mean the same thing in every tool. */
@@ -104,22 +105,12 @@ export const SHARED_GUIDANCE: GuidanceEntry[] = [
     anchor: 'shared.privacy',
     title: 'Where does my data go?',
     body: [
+      // The suite's standard statement, from the same source as the footer and
+      // the Privacy section, so the three cannot say different things.
+      { kind: 'p', text: PRIVACY_STATEMENT },
       {
         kind: 'p',
-        text: 'Nowhere. Every calculation runs in this browser, nothing you enter is transmitted, and the page contacts no third party at all: the typefaces are served from this site and there is no analytics script.',
-      },
-      {
-        kind: 'p',
-        text: 'This is enforced rather than promised. The security policy permits connections to this origin only, and the build fails if a full session in a real browser produces a single request that leaves it.',
-      },
-      {
-        // Added after a reviewer captured a beacon on the deployed site that no
-        // check here could have seen. The automated check against the served
-        // site went with the deployment pipeline, so this names the gap rather
-        // than claiming to close it. Stating it is what keeps the paragraph
-        // above from being read as covering more than it does.
-        kind: 'p',
-        text: 'That check is on the build, and the build is what gets published. What it cannot see is anything a host inserts into a response afterwards, which is a real failure mode rather than a hypothetical one. Whoever deploys this is the only party positioned to check for that, so the guarantee above is about the software rather than about any particular host.',
+        text: 'The full terms are in the Privacy Policy, linked from the footer and from the Privacy section of Method and limitations.',
       },
     ],
   },

@@ -1,12 +1,6 @@
 import { PrivacyPanel } from './shared/PrivacyPanel'
 
-interface Props {
-  /** Storage keys this tool writes, listed to the user verbatim. */
-  storageKeys: string[]
-  onClearStorage: () => void
-}
-
-export function Method({ storageKeys, onClearStorage }: Props) {
+export function Method() {
   return (
     <section className="panel method-panel">
       <div className="panel-head">
@@ -104,12 +98,11 @@ export function Method({ storageKeys, onClearStorage }: Props) {
           </li>
         </ul>
         <p className="hint">
-          References are listed as text rather than as links. Every byte of this page is served from
-          this origin, and a link that navigates to a publisher would disclose a visit that the rest
-          of the tool is built to prevent.
+          References are listed as text rather than as links: a link that navigates to a publisher
+          would disclose a visit that the rest of the tool is built to prevent.
         </p>
 
-        <PrivacyPanel storageKeys={storageKeys} onClearStorage={onClearStorage} />
+        <PrivacyPanel />
       </div>
     </section>
   )

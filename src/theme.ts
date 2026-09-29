@@ -1,5 +1,5 @@
 // Typefaces are self-hosted rather than loaded from Google Fonts, so the page
-// contacts no third party. Latin subsets only: five faces, about 104 kB total.
+// is not seen by a font network. Latin subsets only: five faces, about 104 kB total.
 import '@fontsource/inter/latin-400.css'
 import '@fontsource/inter/latin-600.css'
 import '@fontsource/inter/latin-700.css'
