@@ -16,12 +16,13 @@
     "check:privacy": "node scripts/check-privacy.mjs",
     "check:citation": "node scripts/check-citation.mjs",
     "check:network": "node scripts/check-network.mjs",
-    "verify": "npm run check:style && npm run check:citation && tsc -b && npm test && npm run build && npm run check:privacy && npm run check:network"
+    "verify": "npm run check:style && npm run check:citation && tsc -b && npm test && npm run build && npm run check:privacy && npm run check:network && npm run check:consent",
+    "check:consent": "node node_modules/@ligant/bench-chrome/scripts/check-consent.mjs --serve dist"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/inter": "^5.3.0",
-    "@ligant/bench-chrome": "file:vendor/ligant-bench-chrome-1.0.0.tgz",
+    "@ligant/bench-chrome": "file:vendor/ligant-bench-chrome-1.1.0.tgz",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

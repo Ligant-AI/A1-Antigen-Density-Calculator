@@ -211,22 +211,34 @@ The page carries the standard privacy statement every Ligant Bench Tool shares:
 > entirely in your browser, and your inputs are never transmitted, stored, or
 > logged. We use Cloudflare Web Analytics to count visits and measure how
 > quickly this page loads, so we can see which tools are used and improve them.
-> It sets no cookie, does not identify you, and never reads what you type.
+> It sets no cookie, does not identify you, and never reads what you type. If
+> you allow it in the banner, we also use Google Analytics, which sets cookies
+> and records which pages you visit; it never receives anything you type into
+> this tool.
 
 The full terms are in the [Privacy Policy](https://ligant.ai/privacy).
 
 - Typefaces are self-hosted, about 104 kB of Latin subsets, rather than loaded
   from a font network.
-- Nothing is kept in browser storage: every load starts from an empty document,
-  and the worked example is one press of a button away.
-- The content security policy permits this origin, and the Cloudflare Web
-  Analytics beacon script and nothing else. Its report goes back to this origin.
+- Nothing you enter is kept in browser storage: every load starts from an empty
+  document, and the worked example is one press of a button away. The suite
+  footer keeps only your answer to its privacy banner (one `localStorage` entry,
+  `ligant_privacy_choice`), and only on the hosted page.
+- The content security policy permits this origin, the Cloudflare Web Analytics
+  beacon script (its report goes back to this origin), and the Google Analytics
+  hosts, which the banner loads only after you click Allow. Nothing else.
+- A copy you run yourself, including the single-file build opened from disk,
+  shows no banner and never contacts Google.
 
 **This is enforced, not promised.** Two checks run on every commit:
 
 - `npm run check:privacy` fails the build on any external origin in the policy
-  other than the analytics beacon script, in the entry document or the bundle,
-  and on any network primitive in the source.
+  other than the disclosed analytics, in the entry document or the bundle, and
+  on any network primitive in the source.
+- `npm run check:consent` serves the build as the hosted page in a real
+  browser: nothing Google or stored before Allow, a sentinel typed into every
+  field never reaches any host, withdrawal deletes the cookies, GPC declines,
+  and a local copy never asks.
 - `npm run check:network` serves the production build with the real policy
   applied as a header, drives a full session in a browser, and fails if a single
   request leaves the origin. It also fails if the page reads or writes browser
