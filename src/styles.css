@@ -378,6 +378,9 @@ tr.excluded td input { color: var(--text-muted); text-decoration: line-through; 
 .flag svg { flex-shrink: 0; margin-top: 1px; }
 
 .empty { text-align: center; padding: 30px 20px; color: var(--text-muted); font-size: 13px; }
+.state-block.incomplete { text-align: center; padding: 22px 20px 26px; color: var(--text-muted); font-size: 13px; }
+.state-block.incomplete h3 { color: var(--text-primary); font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+.state-block.incomplete ul { display: inline-block; text-align: left; margin: 0; padding-left: 18px; font-size: 12px; line-height: 1.6; }
 
 /* ---------- chart ---------- */
 

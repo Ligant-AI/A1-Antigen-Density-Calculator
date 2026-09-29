@@ -26,8 +26,8 @@ export const HEADER: HeaderOptions = {
   title: 'Antigen Density Calculator',
   description:
     'Quantifies surface antigen density from flow cytometry median fluorescence intensity by ' +
-    'calibration against certified bead standards. All values are computed deterministically by ' +
-    'least-squares regression. No model or inference is applied beyond the reported fit.',
+    'calibration against certified bead standards. Every value is computed deterministically by a ' +
+    'least-squares fit you can read. No model and no inference is applied to any reported number.',
 }
 
 export const FOOTER: FooterOptions = {
@@ -50,5 +50,5 @@ export const FOOTER: FooterOptions = {
       what: 'software',
     },
   ],
-  disclaimer: 'Research use only. Not for clinical or diagnostic decision-making.',
+  disclaimer: 'Research use only. Not qualified for GxP decision-making.',
 }

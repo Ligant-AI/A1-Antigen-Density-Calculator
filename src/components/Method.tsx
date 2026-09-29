@@ -4,7 +4,7 @@ export function Method() {
   return (
     <section className="panel method-panel">
       <div className="panel-head">
-        <div className="titles"><h2>Method and limitations</h2></div>
+        <div className="titles"><h2>Method, conventions and limits</h2></div>
       </div>
       <div className="panel-body prose">
         <h3>Computation</h3>
@@ -36,7 +36,7 @@ export function Method() {
           than a fully propagated interval.
         </p>
 
-        <h3>Limitations</h3>
+        <h3>Failure classes this tool cannot detect</h3>
         <ul>
           <li>
             <strong>ABC is not equivalent to antigen copy number.</strong> Epitope accessibility,

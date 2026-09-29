@@ -1076,7 +1076,7 @@ if (severity.criticals === 0) {
 // Two findings from the same live pass, measured the way the reviewer measured
 // them rather than by reading the CSS.
 //
-// At 420px the columns collapse, and "Method and limitations" sat between the
+// At 420px the columns collapse, and "Method, conventions and limits" sat between the
 // last input and the first number: roughly 1,750px of methodology, putting the
 // standard curve at y=3,595 on a 5,000px page. Reading order is now inputs,
 // results, method.
@@ -1136,7 +1136,7 @@ const phone = await page.evaluate(() => {
   return {
     lastInput: top(lastInput),
     curve: top(find('Standard curve')?.closest('.panel')),
-    method: top(find('Method and limitations')?.closest('.panel')),
+    method: top(find('Method, conventions and limits')?.closest('.panel')),
     page: document.documentElement.scrollHeight,
   }
 })
