@@ -330,7 +330,22 @@ describe('worked example regression', () => {
       Math.round(quantifySample(s, c, DEMO_OPTIONS).netAbc as number)
     expect(abc(DEMO_SAMPLES.cd19)).toBe(35_636)
     expect(abc(DEMO_SAMPLES.her2)).toBe(262_241)
-    expect(abc(DEMO_SAMPLES.keratinocyte)).toBe(632)
+  })
+
+  // The keratinocyte carries do-not-report flags, so it reports no density.
+  // This pinned 632 until the audit found the card printing that figure, its
+  // interval and its engaged sites beneath "Do not report this figure". The
+  // arithmetic behind it is unchanged, which the diagnostics still show.
+  it('withholds the keratinocyte figure, its interval and its sites', () => {
+    const r = quantifySample(DEMO_SAMPLES.keratinocyte, c, DEMO_OPTIONS)
+    expect(resultStatus(r.flags)).toBe('do_not_report')
+    expect(r.withheld).toBe(true)
+    expect(r.netAbc).toBeNull()
+    expect(r.lower).toBeNull()
+    expect(r.upper).toBeNull()
+    expect(r.sitesLow).toBeNull()
+    expect(r.sitesHigh).toBeNull()
+    expect(Math.round((r.grossAbc as number) - (r.controlAbc as number))).toBe(632)
   })
 })
 
@@ -396,8 +411,40 @@ describe('below detection', () => {
     expect(r.netAbc).toBeNull()
   })
 
-  it('does not suppress the deliberately under-range demo sample', () => {
-    expect(quantifySample(DEMO_SAMPLES.keratinocyte, c, DEMO_OPTIONS).netAbc).not.toBeNull()
+  // Inverted. This asserted the under-range demo sample kept its figure. It is
+  // now withheld, which is not the same claim as below detection: the result
+  // says so, and keeps the diagnostics that explain why.
+  it('withholds the deliberately under-range demo sample without calling it below detection', () => {
+    const r = quantifySample(DEMO_SAMPLES.keratinocyte, c, DEMO_OPTIONS)
+    expect(r.netAbc).toBeNull()
+    expect(r.withheld).toBe(true)
+    expect(r.grossAbc).toBeGreaterThan(0)
+    expect(r.controlAbc).toBeGreaterThan(0)
+    expect(r.backgroundFraction).toBeCloseTo(0.614, 3)
+  })
+
+  it('does not mark a below-detection result as withheld', () => {
+    const r = quantifySample({ id: 'x', label: 'x', mfi: 250, controlMfi: 260 }, c, DEMO_OPTIONS)
+    expect(r.netAbc).toBeNull()
+    expect(r.withheld).toBe(false)
+  })
+
+  it('drops the below-lowest-bead caveat from a withheld figure, and never cites a limit of quantification', () => {
+    const kera = quantifySample(DEMO_SAMPLES.keratinocyte, c, DEMO_OPTIONS)
+    expect(kera.flags.some((f) => f.message.includes('lowest bead standard'))).toBe(false)
+    const text = (r: typeof kera) => r.flags.map((f) => `${f.message} ${f.remedy ?? ''}`).join(' ')
+    expect(text(kera)).not.toMatch(/limit of quantification/i)
+    expect(text(kera)).not.toContain('632')
+    // A reportable figure below the lowest bead keeps a caveat, without the claim.
+    // MFI-space subtraction takes 2,500 less 600 below the dimmest bead while
+    // the background stays immaterial (23%), so nothing forbids reporting it.
+    const low = quantifySample({ id: 'x', label: 'x', mfi: 2_500, controlMfi: 600 }, c, {
+      ...DEMO_OPTIONS,
+      backgroundMode: 'mfi',
+    })
+    expect(low.withheld).toBe(false)
+    expect(low.flags.some((f) => f.message.includes('lowest bead standard'))).toBe(true)
+    expect(text(low)).not.toMatch(/limit of quantification/i)
   })
 })
 
@@ -505,8 +552,15 @@ describe('calibration flags reaching the result', () => {
     const r = quantifyWithCalibration(DEMO_SAMPLES.cd19, c, DEMO_OPTIONS, mismatch)
     expect(r.calibrationFlags).toHaveLength(1)
     expect(calibrationValid(r)).toBe(false)
-    // The value is still computed, so the user can see what their settings did.
-    expect(r.netAbc).toBeCloseTo(35_636, 0)
+    // Inverted. This asserted the value was still computed. A calibration the
+    // tool has declared invalid supports no figure, so none is carried.
+    expect(r.withheld).toBe(true)
+    expect(r.netAbc).toBeNull()
+    expect(r.lower).toBeNull()
+    expect(r.upper).toBeNull()
+    expect(r.sitesLow).toBeNull()
+    expect(r.sitesHigh).toBeNull()
+    expect(resultStatus([...r.calibrationFlags, ...r.flags])).toBe('do_not_report')
   })
 
   it('leaves a sound calibration unmarked', () => {
@@ -938,12 +992,26 @@ describe('independently reimplemented regression vectors', () => {
   it.each([
     ['cd19', 36_562, 926, 35_636],
     ['her2', 263_442, 1_201, 262_241],
-    ['keratinocyte', 1_636, 1_004, 632],
   ] as const)('resolves %s to gross, background and net', (key, gross, background, net) => {
     const r = quantifySample(DEMO_SAMPLES[key], c, DEMO_OPTIONS)
     expect(Math.round(r.grossAbc as number)).toBe(gross)
     expect(Math.round(r.controlAbc as number)).toBe(background)
     expect(Math.round(r.netAbc as number)).toBe(net)
+  })
+
+  // The keratinocyte's gross and background are still the reviewed figures.
+  // Its net (632) and interval (474 to 842, 325 to 1,226) were pinned here too
+  // and are no longer reported, because the sample carries do-not-report flags.
+  it('resolves keratinocyte to the reviewed gross and background, and reports no net', () => {
+    const r = quantifySample(DEMO_SAMPLES.keratinocyte, c, DEMO_OPTIONS)
+    expect(Math.round(r.grossAbc as number)).toBe(1_636)
+    expect(Math.round(r.controlAbc as number)).toBe(1_004)
+    expect(r.netAbc).toBeNull()
+    for (const level of [0.95, 0.99]) {
+      const at = quantifySample(DEMO_SAMPLES.keratinocyte, c, { ...DEMO_OPTIONS, confidenceLevel: level })
+      expect(at.lower).toBeNull()
+      expect(at.upper).toBeNull()
+    }
   })
 
   // The interval is the one place a reviewer's arithmetic and ours could agree
@@ -952,10 +1020,8 @@ describe('independently reimplemented regression vectors', () => {
   it.each([
     ['cd19', 0.95, 31_662, 40_110],
     ['her2', 0.95, 229_145, 300_116],
-    ['keratinocyte', 0.95, 474, 842],
     ['cd19', 0.99, 27_128, 46_812],
     ['her2', 0.99, 192_111, 357_970],
-    ['keratinocyte', 0.99, 325, 1_226],
   ] as const)('brackets %s at %s with the reviewed interval', (key, level, lower, upper) => {
     const r = quantifySample(DEMO_SAMPLES[key], c, { ...DEMO_OPTIONS, confidenceLevel: level })
     expect(Math.round(r.lower as number)).toBe(lower)
@@ -1007,9 +1073,14 @@ describe('guard behaviour the review asked to be pinned as behaviour', () => {
     expect(blocked.backgroundFraction as number).toBeGreaterThan(0.9)
     expect(blocked.netAbc).toBeNull()
 
+    // Below the floor the figure is no longer reported either, because 89.8%
+    // is a do-not-report background. What separates the two sides of the floor
+    // is now the claim made: below detection above it, withheld below it.
     const reported = quantifySample(sample(100_000, 90_000), c, DEMO_OPTIONS)
     expect(reported.backgroundFraction as number).toBeLessThan(0.9)
-    expect(reported.netAbc).not.toBeNull()
+    expect(blocked.withheld).toBe(false)
+    expect(reported.withheld).toBe(true)
+    expect(reported.netAbc).toBeNull()
   })
 
   it('is byte identical over ten runs of the same input', () => {
@@ -1028,20 +1099,26 @@ describe('the 50 to 90 percent background band', () => {
   // Both cases were reported with a warning and a density band beside them
   // until the dominant-background tier landed. The number was never wrong: the
   // card asserted a biological verdict on it, which is what changed.
-  it('is critical at 74.6%, and still reports the figure', () => {
+  // Inverted. These asserted the figure was still reported beside a critical.
+  // Any do-not-report flag now withholds it; the arithmetic is unchanged, as
+  // the difference of the two diagnostics still shows.
+  it('is critical at 74.6%, and withholds the figure', () => {
     const r = at(20_000, 15_000)
     expect(r.backgroundFraction as number).toBeCloseTo(0.746, 3)
-    expect(Math.round(r.netAbc as number)).toBe(21_143)
+    expect(Math.round((r.grossAbc as number) - (r.controlAbc as number))).toBe(21_143)
     expect(resultStatus(r.flags)).toBe('do_not_report')
+    expect(r.withheld).toBe(true)
+    expect(r.netAbc).toBeNull()
   })
 
   it('is critical at 89.8%, one tenth below the detection floor', () => {
     const r = at(100_000, 90_000)
     expect(r.backgroundFraction as number).toBeCloseTo(0.898, 3)
-    expect(Math.round(r.netAbc as number)).toBe(43_551)
+    expect(Math.round((r.grossAbc as number) - (r.controlAbc as number))).toBe(43_551)
     expect(resultStatus(r.flags)).toBe('do_not_report')
-    // Distinct from the floor above it, which withholds the figure entirely.
-    expect(r.netAbc).not.toBeNull()
+    // Withheld rather than below detection, which is what the floor above says.
+    expect(r.withheld).toBe(true)
+    expect(r.netAbc).toBeNull()
   })
 
   it('says why no band is shown, in terms of the two numbers on screen', () => {
@@ -1212,8 +1289,15 @@ describe('the reported numbers are a function of the fit and nothing else', () =
 
       expect(r.grossAbc).toBe(gross)
       expect(r.controlAbc).toBe(background)
-      expect(r.netAbc).toBe(net)
       expect(r.backgroundFraction).toBe(background / gross)
+
+      // A do-not-report result carries no figure at all (the keratinocyte).
+      if (resultStatus(r.flags) === 'do_not_report') {
+        expect(r.withheld).toBe(true)
+        expect([r.netAbc, r.lower, r.upper, r.sitesLow, r.sitesHigh]).toEqual([null, null, null, null, null])
+        return
+      }
+      expect(r.netAbc).toBe(net)
 
       // The interval is the mean-response half-width at the stained reading,
       // applied as a multiplicative factor because the fit is in log space.
@@ -1248,8 +1332,16 @@ describe('the reported numbers are a function of the fit and nothing else', () =
   ] as const)('holds %s', (_where, mfi, controlMfi) => {
     const r = quantifySample({ id: 'x', label: 'x', mfi, controlMfi }, c, DEMO_OPTIONS)
     const net = abcAt(mfi) - abcAt(controlMfi)
+    // The diagnostics are reported at every magnitude, so the invariant is
+    // held on them everywhere. Outside the beads, or past the ceiling, the
+    // figure itself is withheld rather than reported, and carried as nothing.
     expect(r.grossAbc).toBe(abcAt(mfi))
     expect(r.controlAbc).toBe(abcAt(controlMfi))
+    if (resultStatus(r.flags) === 'do_not_report') {
+      expect(r.withheld).toBe(true)
+      expect([r.netAbc, r.lower, r.upper, r.sitesLow, r.sitesHigh]).toEqual([null, null, null, null, null])
+      return
+    }
     expect(r.netAbc).toBe(net)
     expect(r.sitesHigh).toBe(net * 2)
     const x0 = Math.log10(mfi)
@@ -1262,10 +1354,14 @@ describe('the reported numbers are a function of the fit and nothing else', () =
   it('holds for a result smaller than any threshold in the file', () => {
     // Below the assigned-value floor, below the lowest bead, below the density
     // band boundaries. Nothing here may lift it to meet any of them.
+    // MFI 20 is far below the beads, so the figure is withheld; the gross
+    // density is the same mapping and is still reported, so it carries the test.
     const r = quantifySample({ id: 'x', label: 'x', mfi: 20, controlMfi: null }, c, DEMO_OPTIONS)
-    expect(r.netAbc).toBe(abcAt(20))
-    expect(r.netAbc as number).toBeLessThan(100)
-    expect(r.sitesLow).toBe(abcAt(20))
+    expect(r.grossAbc).toBe(abcAt(20))
+    expect(r.grossAbc as number).toBeLessThan(100)
+    expect(r.withheld).toBe(true)
+    expect(r.netAbc).toBeNull()
+    expect(r.sitesLow).toBeNull()
     expect(r.controlAbc).toBeNull()
   })
 

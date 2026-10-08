@@ -120,13 +120,16 @@ export interface ExportPayload {
 /**
  * Full analysis export: settings, raw inputs, fit parameters, and results in one
  * file, so a reviewer can reproduce every number without the app.
+ *
+ * Pure, and separate from the download, so what the file says about a withheld
+ * result can be tested without a browser.
  */
-export function exportResultsCsv(payload: ExportPayload, filename: string) {
+export function buildResultsCsv(payload: ExportPayload, generated: Date = new Date()): string {
   const { options, curve, standards, samples } = payload
   const rows: string[] = []
 
   rows.push(csvRow(['Antigen Density Calculator', payload.appVersion]))
-  rows.push(csvRow(['Generated', new Date().toISOString()]))
+  rows.push(csvRow(['Generated', generated.toISOString()]))
   rows.push('')
 
   rows.push(csvRow(['SETTINGS']))
@@ -220,7 +223,7 @@ export function exportResultsCsv(payload: ExportPayload, filename: string) {
         // it, the figure the screen shows: 35636.10777668543 against an
         // interval of 31,661 to 40,110 is fifteen digits of which two are
         // supported, and it is the column someone pastes into a manuscript.
-        result.netAbc === null ? '' : formatNumber(result.netAbc),
+        result.withheld ? 'not reported' : result.netAbc === null ? '' : formatNumber(result.netAbc),
         result.lower, result.upper, result.sitesLow, result.sitesHigh,
         resultStatus([...result.calibrationFlags, ...result.flags]),
         yesNo(result.sampleInRange),
@@ -242,16 +245,21 @@ export function exportResultsCsv(payload: ExportPayload, filename: string) {
   }
   rows.push(
     csvRow([
-      'A row marked do_not_report carries its computed value so the export stays reproducible. The value is not reportable.',
+      'A row marked do_not_report carries no net ABC, interval or inferred antigen sites, because the figure is not reportable. Gross and background ABC are kept so the reason can be checked.',
     ]),
   )
   rows.push(csvRow(['Research use only. Not qualified for GxP decision-making.']))
 
-  download(filename, 'text/csv', rows.join('\n'))
+  return rows.join('\n')
+}
+
+export function exportResultsCsv(payload: ExportPayload, filename: string) {
+  download(filename, 'text/csv', buildResultsCsv(payload))
 }
 
 /** Human-readable one-line summary, for pasting into a lab notebook. */
 export function summaryLine(label: string, r: SampleResult, confidenceLevel: number): string {
+  if (r.withheld) return `${label}: not reported (a do-not-report condition holds)`
   if (r.netAbc === null) return `${label}: below detection`
   const interval = `${confidenceLabel(confidenceLevel)} ${formatNumber(r.lower ?? 0)}–${formatNumber(r.upper ?? 0)}`
   return `${label}: ${formatNumber(r.netAbc)} ABC (${interval})`

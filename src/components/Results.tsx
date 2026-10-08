@@ -75,6 +75,30 @@ function backgroundShare(fraction: number): string {
   return `${(fraction * 100).toFixed(1)}% of gross`
 }
 
+/** Gross and background density, the diagnostics that explain a flag. Shown
+ *  on a reported figure and on a withheld one alike. */
+function BackgroundDetail({ result }: { result: SampleResult }) {
+  if (result.controlAbc === null) return null
+  return (
+    <>
+      <dt>Gross density</dt>
+      <dd>{formatNumber(result.grossAbc as number)}</dd>
+      <dt>Background density</dt>
+      <dd>
+        {formatNumber(result.controlAbc)}
+        {result.backgroundFraction !== null && (
+          <span className="hint" style={{ fontFamily: 'var(--font)' }}>
+            {' ('}
+            {backgroundShare(result.backgroundFraction)}
+            {result.controlInRange === false && ', extrapolated below the standard'}
+            {')'}
+          </span>
+        )}
+      </dd>
+    </>
+  )
+}
+
 interface Props {
   entries: { sample: Sample; result: SampleResult }[]
   valency: 'monovalent' | 'bivalent'
@@ -146,6 +170,22 @@ export function Results({ entries, valency, confidenceLevel, saturationConfirmed
                   written down.
                 </p>
               </>
+            ) : result.withheld ? (
+              <>
+                <div className="hero">
+                  <span className="value below-detection">Not reported</span>
+                </div>
+                <p className="hint">
+                  No density, interval or inferred antigen sites are reported, because the condition
+                  stated above means the measurement does not support a figure. Gross and background
+                  densities are shown so the reason can be checked.
+                </p>
+                {result.controlAbc !== null && (
+                  <dl className="detail-grid">
+                    <BackgroundDetail result={result} />
+                  </dl>
+                )}
+              </>
             ) : result.netAbc === null ? (
               <>
                 <div className="hero">
@@ -184,24 +224,7 @@ export function Results({ entries, valency, confidenceLevel, saturationConfirmed
                         : ' engaged sites, derived from ABC assuming 1:1 binding. Not measured, and not an upper bound on antigen: an epitope the antibody cannot reach is not counted at all.'}
                     </span>
                   </dd>
-                  {result.controlAbc !== null && (
-                    <>
-                      <dt>Gross density</dt>
-                      <dd>{formatNumber(result.grossAbc as number)}</dd>
-                      <dt>Background density</dt>
-                      <dd>
-                        {formatNumber(result.controlAbc)}
-                        {result.backgroundFraction !== null && (
-                          <span className="hint" style={{ fontFamily: 'var(--font)' }}>
-                            {' ('}
-                            {backgroundShare(result.backgroundFraction)}
-                            {result.controlInRange === false && ', extrapolated below the standard'}
-                            {')'}
-                          </span>
-                        )}
-                      </dd>
-                    </>
-                  )}
+                  <BackgroundDetail result={result} />
                   {band && (
                     <>
                       <dt>Interpretation</dt>
