@@ -288,7 +288,7 @@ generic curve-fitting hygiene.
 
 ## Status and limitations
 
-`v0.1.3`. **Research use only. Not qualified for GxP decision-making.**
+`v1.0.0`. **Research use only. Not qualified for GxP decision-making.**
 
 The confidence interval covers the calibration curve, not the sample. Assigned
 bead values are lot-specific and must come from your own certificate of
@@ -315,7 +315,7 @@ the newest revision.
 
 **The software**:
 
-> Modi, A.B. (2026). Antigen Density Calculator (`v0.1.3`) [Computer software].
+> Modi, A.B. (2026). Antigen Density Calculator (`v1.0.0`) [Computer software].
 > Ligant AI Incorporated. <https://doi.org/10.5281/zenodo.22259176>
 
 That is the concept DOI, which resolves to the newest release. Cite the version

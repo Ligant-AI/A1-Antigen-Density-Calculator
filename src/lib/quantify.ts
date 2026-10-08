@@ -135,8 +135,24 @@ export interface SampleResult {
   grossAbc: number | null
   /** ABC implied by the control MFI, if a control was supplied. */
   controlAbc: number | null
-  /** Background-subtracted ABC. This is the reported density. */
+  /**
+   * Background-subtracted ABC. This is the reported density.
+   *
+   * Null when there is nothing to report: below detection, or withheld because
+   * a do-not-report condition holds (see `withheld`). A figure the tool has
+   * just told the reader not to report is not carried in the result at all, so
+   * no output path can print it: not the card, not the chart, not the export.
+   */
   netAbc: number | null
+  /**
+   * True when the arithmetic produced a figure but a critical flag, the
+   * sample's own or the calibration's, means it must not be reported. The
+   * figure, its interval and the inferred sites are then null. Gross and
+   * background densities are kept, because they are the diagnostics that
+   * explain the flag. Distinct from below detection, which is a finding about
+   * the sample rather than a refusal to report one.
+   */
+  withheld: boolean
   /**
    * Background density as a fraction of gross density.
    *
@@ -709,6 +725,12 @@ export function quantifySample(
   sample: Sample,
   curve: CurveResult,
   options: QuantifyOptions,
+  /**
+   * Calibration-level criticals already known to invalidate this result.
+   * Passed in rather than applied afterwards so that withholding is decided
+   * once, here, before any flag text that would quote the figure is written.
+   */
+  invalidating: readonly Flag[] = [],
 ): SampleResult {
   const flags: Flag[] = []
   const base: SampleResult = {
@@ -717,6 +739,7 @@ export function quantifySample(
     grossAbc: null,
     controlAbc: null,
     netAbc: null,
+    withheld: false,
     backgroundFraction: null,
     sampleInRange: null,
     controlInRange: null,
@@ -830,9 +853,9 @@ export function quantifySample(
       // one would repeat the number without adding a fact.
       flags.push({
         level: 'critical',
-        message: `Background accounts for ${(backgroundFraction * 100).toFixed(1)}% of gross density. The value below is smaller than the background subtracted to obtain it.`,
+        message: `Background accounts for ${(backgroundFraction * 100).toFixed(1)}% of gross density. The net value is smaller than the background subtracted to obtain it.`,
         remedy:
-          'No density band is shown, because the measurement does not support a verdict on effector response. The figure is displayed for diagnostic purposes only. Before reporting it, confirm the control is appropriate for this panel, an FMO rather than an isotype, and raise specific signal rather than refining the arithmetic: check antibody concentration, fluorophore brightness, and whether the target is expressed on this population at all.',
+          'No density band is shown and no figure is reported, because the measurement does not support either. Gross and background densities are shown so the reason can be checked. Before reporting this sample, confirm the control is appropriate for this panel, an FMO rather than an isotype, and raise specific signal rather than refining the arithmetic: check antibody concentration, fluorophore brightness, and whether the target is expressed on this population at all.',
       })
     } else {
       flags.push({
@@ -847,6 +870,13 @@ export function quantifySample(
   // How much the choice of subtraction mode actually matters for this sample.
   // Where the two modes agree the choice is immaterial; where they diverge, the
   // divergence is itself information about the dataset.
+  // The sample's own conditions that forbid reporting the figure. Decided here,
+  // before the warnings below are written, because a warning that quotes the
+  // figure must not quote one that is about to be withheld.
+  const implausible = netAbc > MAX_PLAUSIBLE_DENSITY
+  const withheld =
+    invalidating.length > 0 || implausible || flags.some((f) => f.level === 'critical')
+
   let modeDivergence: number | null = null
   if (hasControl && controlAbc !== null) {
     const densityNet = grossAbc - controlAbc
@@ -857,9 +887,12 @@ export function quantifySample(
     if (densityNet > 0 && mfiNet !== null && mfiNet > 0) {
       modeDivergence = Math.abs(densityNet - mfiNet) / Math.max(densityNet, mfiNet)
       if (modeDivergence > MODE_DIVERGENCE) {
+        const percent = (modeDivergence * 100).toFixed(0)
         flags.push({
           level: 'warning',
-          message: `Density-space and MFI-space subtraction differ by ${(modeDivergence * 100).toFixed(0)}% for this sample (${formatNumber(densityNet)} against ${formatNumber(mfiNet)}).`,
+          message: withheld
+            ? `Density-space and MFI-space subtraction differ by ${percent}% for this sample.`
+            : `Density-space and MFI-space subtraction differ by ${percent}% for this sample (${formatNumber(densityNet)} against ${formatNumber(mfiNet)}).`,
           remedy:
             'The two modes agree only where the log-log slope is near unity and the background is small. Neither is a correction of the other, so state which mode was used when reporting this value.',
         })
@@ -879,22 +912,31 @@ export function quantifySample(
   const [minAssigned] = curve.assignedRange
   const minAbc =
     options.standardKind === 'pe-molecules' ? minAssigned / options.fpRatio : minAssigned
-  if (netAbc < minAbc) {
+  // A caveat on reporting the figure, so it has nothing to say about a figure
+  // that is not reported. It also once advised treating the value as an
+  // estimate near the limit of quantification, a limit this tool has never
+  // established.
+  if (!withheld && netAbc < minAbc) {
     flags.push({
       level: 'warning',
       message: `Result (${formatNumber(netAbc)}) lies below the lowest bead standard (${formatNumber(minAbc)}).`,
       remedy:
-        'Treat it as an estimate near the limit of quantification rather than a measurement, and report it with that caveat.',
+        'The standard has no population this dim, so how well the curve quantifies at this density has not been established. State that when reporting the value, or add a dimmer bead population.',
     })
   }
 
-  if (netAbc > MAX_PLAUSIBLE_DENSITY) {
+  if (implausible) {
     flags.push({
       level: 'critical',
-      message: `Result (${formatNumber(netAbc)}) exceeds any physically plausible antigen density. A cell surface accommodates on the order of 10⁷ antibody footprints.`,
+      message: `The computed result exceeds any physically plausible antigen density (${formatNumber(MAX_PLAUSIBLE_DENSITY)} ABC). A cell surface accommodates on the order of 10⁷ antibody footprints.`,
       remedy:
         'Check the entered MFI for a transcription error, particularly a misplaced decimal point or an exponent. This figure is not a measurement.',
     })
+  }
+
+  if (withheld) {
+    // netAbc, the interval and the inferred sites stay null, from base.
+    return { ...measured, modeDivergence, withheld: true, flags }
   }
 
   const sitesLow = netAbc
@@ -929,7 +971,7 @@ export function quantifyWithCalibration(
   const invalidating = [...extraCalibrationFlags, ...curve.flags].filter(
     (f) => f.level === 'critical',
   )
-  return { ...quantifySample(sample, curve, options), calibrationFlags: invalidating }
+  return { ...quantifySample(sample, curve, options, invalidating), calibrationFlags: invalidating }
 }
 
 /** Whether the calibration behind a result can support any figure at all. */
@@ -981,21 +1023,21 @@ export const DENSITY_BANDS: DensityBand[] = [
     min: 100,
     max: 1_000,
     label: 'Low',
-    note: 'Cytotoxicity is frequently achievable; cytokine release and proliferation are commonly limited.',
+    note: 'Published CARs have shown cytotoxicity in vitro at densities in this range more often than cytokine release or proliferation; thresholds are construct-specific.',
   },
   {
     id: 'intermediate',
     min: 1_000,
     max: 10_000,
     label: 'Intermediate',
-    note: 'Robust cytotoxicity is typical for conventional constructs.',
+    note: 'Within the range at which published conventional CARs have commonly shown cytotoxicity in vitro; thresholds are construct-specific.',
   },
   {
     id: 'high',
     min: 10_000,
     max: Infinity,
     label: 'High',
-    note: 'Full effector response is expected. On normal tissue, this density represents a substantial on-target off-tumour risk.',
+    note: 'Above the densities at which published CARs have shown full activity in vitro; thresholds are construct-specific. If measured on normal tissue, a density in this range would be a substantial on-target, off-tumour concern.',
   },
 ]
 

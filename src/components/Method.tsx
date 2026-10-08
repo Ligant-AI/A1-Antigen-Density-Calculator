@@ -98,8 +98,8 @@ export function Method() {
           </li>
         </ul>
         <p className="hint">
-          References are listed as text rather than as links: a link that navigates to a publisher
-          would disclose a visit that the rest of the tool is built to prevent.
+          References are given as text rather than links, so the page itself sends no visit to a
+          publisher.
         </p>
 
         <PrivacyPanel />

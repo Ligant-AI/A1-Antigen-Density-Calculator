@@ -543,6 +543,28 @@ if (/of gross density/.test(cd19)) {
   uiFailures.push('antigen density: an immaterial background was flagged, which trains users to ignore flags')
 }
 
+// The keratinocyte carries do-not-report flags. Its card printed 632 ABC, an
+// interval and "632 - 1263 engaged sites" beneath them, and a note advising it
+// be reported as an estimate near a limit of quantification the tool has never
+// established. None of that may render; the diagnostics that explain the flag
+// must.
+if (!/Not reported/.test(keratinocyte)) {
+  uiFailures.push('antigen density: the do-not-report keratinocyte card does not say the figure is not reported')
+}
+for (const [what, pattern] of [
+  ['its withheld figure', /\b632\b/],
+  ['a confidence interval', /\d+(\.\d+)?% CI/],
+  ['inferred engaged sites', /engaged sites/i],
+  ['a limit of quantification', /limit of quantification/i],
+]) {
+  if (pattern.test(keratinocyte)) {
+    uiFailures.push(`antigen density: the do-not-report keratinocyte card still prints ${what}`)
+  }
+}
+if (!/Gross density/.test(keratinocyte) || !/Background density/.test(keratinocyte)) {
+  uiFailures.push('antigen density: the keratinocyte card hides the gross and background densities that explain its flags')
+}
+
 // Per-population residuals, which R squared alone conceals.
 const residuals = await page.evaluate(
   () => document.querySelectorAll('.residual-strip b').length,
@@ -598,7 +620,7 @@ const invalidated = await page.evaluate(() => {
     count: cards.length,
     withoutAlarm: cards.filter((c) => !/cannot calibrate this stain/i.test(c.innerText)).length,
     withBand: cards.filter((c) => c.querySelector('.band-chip')).length,
-    withVerdict: cards.filter((c) => /Full effector response is expected/i.test(c.innerText)).length,
+    withVerdict: cards.filter((c) => /Above the densities at which published CARs have shown full activity in vitro/i.test(c.innerText)).length,
     withFigure: cards.filter((c) => /\d/.test(c.querySelector('.hero .value')?.textContent ?? ''))
       .length,
   }
@@ -1504,6 +1526,7 @@ const verdicts = await page.evaluate(() =>
         (dt) => dt.textContent === 'Interpretation',
       ),
       criticalText: critical?.textContent ?? null,
+      grossShown: [...card.querySelectorAll('dt')].some((dt) => dt.textContent === 'Gross density'),
       criticalAboveValue:
         critical && hero ? position(critical) < position(hero) : null,
     }
@@ -1514,12 +1537,26 @@ const material = verdicts.find((v) => v.name === 'Material background')
 if (!dominant || !material) {
   uiFailures.push('antigen density: the two background cards did not render')
 } else {
-  // The figure stays. Withholding it would say "below detection", which is a
-  // different and untrue claim about this measurement.
-  if (!/^\d/.test(dominant.value)) {
+  // The figure is withheld, as every do-not-report figure is, and said to be
+  // withheld rather than below detection, which would be a different and
+  // untrue claim about this measurement. Until the audit of October 2026 this
+  // asserted the opposite: that the figure stayed on the card.
+  if (/\d/.test(dominant.value)) {
     uiFailures.push(
-      `antigen density: at 74.6% background the card shows "${dominant.value}" rather than the ` +
-        'figure, which overstates what is wrong with it',
+      `antigen density: at 74.6% background the card prints "${dominant.value}", a figure it ` +
+        'has just said not to report',
+    )
+  }
+  if (!/^Not reported$/.test(dominant.value.trim())) {
+    uiFailures.push(
+      `antigen density: at 74.6% background the card headline reads "${dominant.value}", ` +
+        'expected "Not reported"',
+    )
+  }
+  if (!dominant.grossShown) {
+    uiFailures.push(
+      'antigen density: at 74.6% background the withheld card hides the gross and background ' +
+        'densities that explain why',
     )
   }
   if (dominant.chip !== null) {

@@ -59,7 +59,7 @@ interface ToolState {
   options: QuantifyOptions
 }
 
-/** A worked Quantum Simply Cellular run, including one deliberately out-of-range sample. */
+/** A worked example on a Quantum Simply Cellular standard, with constructed values, including one deliberately out-of-range sample. */
 function demoState(): ToolState {
   return {
     kitId: 'qsc-mouse',
@@ -411,7 +411,8 @@ export default function App() {
                 )}
               </div>
               <p className="hint">
-                The worked example is a Quantum Simply Cellular run with three samples. The
+                This is a worked example on a Quantum Simply Cellular standard, with three samples.
+                Illustrative values constructed to demonstrate the tool, not a measured run. The
                 keratinocyte sample is deliberately under-range, so you can see what the tool does
                 with a measurement that should not be reported.
               </p>
