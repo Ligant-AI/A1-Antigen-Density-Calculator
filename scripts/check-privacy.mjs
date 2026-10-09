@@ -18,7 +18,7 @@ import { extname, join } from 'node:path'
 // The parent site the masthead links and the footer's Privacy Policy are the
 // suite's, from the shared header and footer, which is where the page gets
 // them. Exact values only: nothing else on ligant.ai is waved through.
-import { LIGANT_URL, PRIVACY_URL, PRIVACY_CHOICES_URL, GA_SCRIPT_URL } from '@ligant/bench-chrome'
+import { LIGANT_URL, PRIVACY_URL, PRIVACY_CHOICES_URL, GA_SCRIPT_URL, NEWSLETTER_ENDPOINT } from '@ligant/bench-chrome'
 
 const failures = []
 const fail = (rule, detail) => failures.push(`  [${rule}] ${detail}`)
@@ -72,6 +72,20 @@ const GOOGLE_ANALYTICS = {
   'img-src': new Set(['https://*.google-analytics.com', 'https://*.googletagmanager.com']),
 }
 
+// The suite footer's newsletter signup (bench-chrome 1.3.0), which posts only an
+// email address the reader chooses to submit, same-origin, to this one path.
+// Exactly that address, in connect-src only: nothing else on this origin or any
+// other is waved through by it.
+const NEWSLETTER_CONNECT = SITE_URL ? `${SITE_URL}${NEWSLETTER_ENDPOINT}` : null
+
+// The footer's newsletter links, shown wherever the form is not (a local copy,
+// a preview host): the signup on the parent site and its privacy terms. Exact
+// values only.
+const NEWSLETTER_LINKS = new Set([
+  'https://ligant.ai/#newsletter',
+  'https://ligant.ai/privacy#newsletter',
+])
+
 // CSP tokens that are keywords or schemes rather than remote origins.
 const CSP_SAFE = new Set([
   "'self'", "'none'", "'unsafe-inline'", "'wasm-unsafe-eval'", "'strict-dynamic'",
@@ -117,6 +131,7 @@ if (!existsSync(headersPath)) {
         if (CSP_SAFE.has(value)) continue
         if (name === 'script-src' && ANALYTICS_SCRIPT.has(value)) continue
         if (GOOGLE_ANALYTICS[name]?.has(value)) continue
+        if (name === 'connect-src' && NEWSLETTER_CONNECT && value === NEWSLETTER_CONNECT) continue
         if (/^https?:\/\//.test(value) || value.includes('.') || value === '*') {
           fail('csp', `${name} allows the external origin ${value}`)
         }
@@ -195,6 +210,8 @@ if (existsSync('dist')) {
       // The suite footer's privacy choice: its policy link, and the one script
       // it loads, only after Allow. Exact values only.
       if (url === PRIVACY_CHOICES_URL || url === GA_SCRIPT_URL) continue
+      // The footer's newsletter links, exact values only.
+      if (NEWSLETTER_LINKS.has(url)) continue
       fail('bundle', `${file} embeds ${url.slice(0, 80)}`)
     }
   }

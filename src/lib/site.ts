@@ -28,7 +28,7 @@ export const TOOL_PATH = '/antigen-density-calculator/'
  * first: a citation and an exported CSV that disagree about which version
  * produced a figure are worse than either alone.
  */
-export const APP_VERSION = 'v1.0.0'
+export const APP_VERSION = 'v1.1.0'
 
 /** The year the citation carries. Fixed, not derived from the clock, so the
  *  page renders the same for every reader and for every build. */

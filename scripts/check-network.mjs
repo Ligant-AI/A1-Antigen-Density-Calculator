@@ -117,6 +117,16 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, acc
 
 const foreign = []
 const cspViolations = []
+// The suite footer's newsletter signup (bench-chrome 1.3.0) posts same-origin to
+// /api/subscribe, so the foreign-origin collector above it cannot see a request
+// there. This session never submits the signup, so no request to that path may
+// happen at all: not on load, and not while the tool is used. The signup itself
+// is exercised on its own, intercepted, by check:consent.
+const subscribe = []
+const watchSubscribe = (target) => target.on('request', (r) => {
+  if (new URL(r.url(), ORIGIN).pathname.includes('/api/subscribe')) subscribe.push(`${r.method()} ${r.url()}`)
+})
+watchSubscribe(page)
 page.on('request', (r) => {
   if (!r.url().startsWith(ORIGIN) && !r.url().startsWith('data:') && !r.url().startsWith('blob:')) {
     foreign.push(`${r.method()} ${r.url()}`)
@@ -219,6 +229,7 @@ const uiFailures = []
     Object.defineProperty(window, '__storageCalls', { value: calls })
   }, { FOREIGN_KEY, FOREIGN_VALUE, LEGACY_VALUE })
   const s = await ctx.newPage()
+  watchSubscribe(s)
   await s.goto(ORIGIN + '/', { waitUntil: 'networkidle' })
   const opened = await s.evaluate(() => ({
     filled: [...document.querySelectorAll('main input[inputmode="decimal"]')].filter((i) => i.value).length,
@@ -274,6 +285,9 @@ for (const [name, path] of [['antigen density', '/']]) {
         'registered address': /3675 Market Street/.test(text) && /Philadelphia PA 19104/.test(text),
         'contact address': /hello@ligant\.ai/.test(text),
         'legal entity': /Ligant AI Incorporated/.test(text),
+        // Present on every host, hidden off benchtools.ligant.ai by design (a
+        // link to ligant.ai shows instead), so attached rather than visible.
+        'newsletter signup form': !!document.querySelector('.site-footer form[data-newsletter]'),
       }
     })(),
   }))
@@ -2174,6 +2188,11 @@ if (foreign.length > 0) {
   for (const r of foreign) console.error('  ' + r)
   failed = true
 }
+if (subscribe.length > 0) {
+  console.error(`\nFAIL: the page sent ${subscribe.length} request(s) to the newsletter endpoint without the signup being submitted:`)
+  for (const r of subscribe) console.error('  ' + r)
+  failed = true
+}
 if (cspViolations.length > 0) {
   console.error(`\nFAIL: ${cspViolations.length} Content-Security-Policy violation(s):`)
   for (const v of cspViolations) console.error('  ' + v)
@@ -2190,7 +2209,9 @@ if (uiFailures.length > 0) {
 }
 
 if (failed) process.exit(1)
-console.log('Runtime checks passed: no request left the origin; social and canonical')
+console.log('Runtime checks passed: no request left the origin; the footer carries the')
+console.log('newsletter signup form and nothing was sent to /api/subscribe on load or while')
+console.log('the tool was used; social and canonical')
 console.log('metadata is absolute and on the configured origin; both pages carry the privacy')
 console.log('disclosure and a main landmark; every guidance panel is fully on screen; the')
 console.log('exported SVG parses; nothing is clipped at 360px; an extreme input cannot')
