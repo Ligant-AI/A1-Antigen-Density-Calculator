@@ -547,7 +547,7 @@ export default function App() {
         and cells acquired under different cytometer settings. Antibody binding capacity is not
         antigen copy number: epitope accessibility, binding valency, conjugate performance and
         antigen internalisation all intervene between the two. All computation is performed locally
-        in this browser. Nothing you enter is transmitted.
+        in this browser. Nothing you enter into the calculator is transmitted.
       </p>
 
       <div className="colophon">

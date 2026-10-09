@@ -25,7 +25,7 @@ abstract: >-
   reports the uncertainty of that conversion, and withholds a figure it cannot
   defend. All computation is ordinary least squares in log10-log10 space. No
   model, no imputation and no language model is applied to any reported value,
-  and no data entered by a user leaves the browser.
+  and no data entered into the calculator leaves the browser.
 authors:
   - family-names: Modi
     given-names: A.B.
@@ -34,7 +34,7 @@ authors:
 # Matches APP_VERSION in src/lib/site.ts and the tag on the archived release.
 # The leading v is kept so that this file, the footer and the tag are the same
 # string rather than three conventions for one version.
-version: v1.0.0
+version: v1.1.0
 # The day the tag was cut, not the day this file was written. Those were four
 # days apart, and a citation whose release date precedes the released commit is
 # wrong in the direction that matters: it points a reader at a tree that did not

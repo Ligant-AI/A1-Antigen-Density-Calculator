@@ -6,8 +6,8 @@ refuses to report a number it cannot defend.
 
 Free, open source, and built by [Ligant](https://ligant.ai) and
 [A.B. Modi](https://www.linkedin.com/in/abmodi-ai/) for cell therapy
-researchers. It runs entirely in the browser. Nothing you enter ever leaves
-your computer.
+researchers. It runs entirely in the browser. Nothing you enter into the
+calculator ever leaves your computer.
 
 Live at **[benchtools.ligant.ai/antigen-density-calculator](https://benchtools.ligant.ai/antigen-density-calculator/)**. Source at
 **[github.com/Ligant-AI/A1-Antigen-Density-Calculator](https://github.com/Ligant-AI/A1-Antigen-Density-Calculator)**,
@@ -207,14 +207,15 @@ negotiable.
 
 The page carries the standard privacy statement every Ligant Bench Tool shares:
 
-> Everything you enter into this tool stays on your computer. Calculations run
-> entirely in your browser, and your inputs are never transmitted, stored, or
-> logged. We use Cloudflare Web Analytics to count visits and measure how
-> quickly this page loads, so we can see which tools are used and improve them.
-> It sets no cookie, does not identify you, and never reads what you type. If
-> you allow it in the banner, we also use Google Analytics, which sets cookies
-> and records which pages you visit; it never receives anything you type into
-> this tool.
+> Everything you enter into this calculator stays on your computer.
+> Calculations run entirely in your browser, and your inputs are never
+> transmitted, stored, or logged. The newsletter signup above is separate: only
+> an email address you choose to submit there is sent to us. We use Cloudflare
+> Web Analytics to count visits and measure how quickly this page loads, so we
+> can see which tools are used and improve them. It sets no cookie, does not
+> identify you, and never reads what you type. If you allow it in the banner,
+> we also use Google Analytics, which sets cookies and records which pages you
+> visit; it never receives anything you type into this tool.
 
 The full terms are in the [Privacy Policy](https://ligant.ai/privacy).
 
@@ -225,23 +226,31 @@ The full terms are in the [Privacy Policy](https://ligant.ai/privacy).
   footer keeps only your answer to its privacy banner (one `localStorage` entry,
   `ligant_privacy_choice`), and only on the hosted page.
 - The content security policy permits this origin, the Cloudflare Web Analytics
-  beacon script (its report goes back to this origin), and the Google Analytics
-  hosts, which the banner loads only after you click Allow. Nothing else.
+  beacon script (its report goes back to this origin), the Google Analytics
+  hosts, which the banner loads only after you click Allow, and the newsletter
+  endpoint on this origin (`https://benchtools.ligant.ai/api/subscribe`), which
+  receives only an email address you choose to submit in the footer signup.
+  Nothing else.
+- The footer signup is shown only on the hosted page. A copy you run yourself
+  shows a link to the signup on ligant.ai instead.
 - A copy you run yourself, including the single-file build opened from disk,
   shows no banner and never contacts Google.
 
 **This is enforced, not promised.** Two checks run on every commit:
 
 - `npm run check:privacy` fails the build on any external origin in the policy
-  other than the disclosed analytics, in the entry document or the bundle, and
-  on any network primitive in the source.
+  other than the disclosed analytics and the newsletter endpoint, in the entry
+  document or the bundle, and on any network primitive in the source.
 - `npm run check:consent` serves the build as the hosted page in a real
   browser: nothing Google or stored before Allow, a sentinel typed into every
-  field never reaches any host, withdrawal deletes the cookies, GPC declines,
-  and a local copy never asks.
+  field of the calculator never reaches any host, withdrawal deletes the
+  cookies, GPC declines, and a local copy never asks. The newsletter signup is
+  checked on its own: nothing is sent before submit, and the one request it
+  makes carries only the signup's own fields and nothing from the calculator.
 - `npm run check:network` serves the production build with the real policy
   applied as a header, drives a full session in a browser, and fails if a single
-  request leaves the origin. It also fails if the page reads or writes browser
+  request leaves the origin, or if anything is sent to the newsletter endpoint
+  while the tool is used. It also fails if the page reads or writes browser
   storage at any point in that session, a reload included.
 
 String analysis is the early gate. The runtime assertion against the build is
@@ -288,7 +297,7 @@ generic curve-fitting hygiene.
 
 ## Status and limitations
 
-`v1.0.0`. **Research use only. Not qualified for GxP decision-making.**
+`v1.1.0`. **Research use only. Not qualified for GxP decision-making.**
 
 The confidence interval covers the calibration curve, not the sample. Assigned
 bead values are lot-specific and must come from your own certificate of
@@ -315,7 +324,7 @@ the newest revision.
 
 **The software**:
 
-> Modi, A.B. (2026). Antigen Density Calculator (`v1.0.0`) [Computer software].
+> Modi, A.B. (2026). Antigen Density Calculator (`v1.1.0`) [Computer software].
 > Ligant AI Incorporated. <https://doi.org/10.5281/zenodo.22259176>
 
 That is the concept DOI, which resolves to the newest release. Cite the version
