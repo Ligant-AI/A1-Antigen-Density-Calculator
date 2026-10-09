@@ -209,7 +209,7 @@ The page carries the standard privacy statement every Ligant Bench Tool shares:
 
 > Everything you enter into this calculator stays on your computer.
 > Calculations run entirely in your browser, and your inputs are never
-> transmitted, stored, or logged. The newsletter signup above is separate: only
+> transmitted, stored, or logged. The newsletter signup at the foot of this page is separate: only
 > an email address you choose to submit there is sent to us. We use Cloudflare
 > Web Analytics to count visits and measure how quickly this page loads, so we
 > can see which tools are used and improve them. It sets no cookie, does not
