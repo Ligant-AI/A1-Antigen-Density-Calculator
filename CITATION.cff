@@ -1,20 +1,10 @@
 # Citation metadata, in the format GitHub and Zenodo both read.
 #
-# The same claim appears in three places: this file, the footer of the tool
-# itself, and the manuscript's Availability section. Three copies of one string
-# is three chances to disagree, so a test asserts this file against the values
-# in src/lib/site.ts, and the remaining diff against the manuscript is done by
-# hand because nothing here can see that document.
-#
 # The DOI is minted by Zenodo when the tagged release is archived. Two are
 # recorded: the concept DOI, which always resolves to the newest version and is
-# the one to cite, and the version DOI for this release. The concept DOI is held
-# against CITATION_DOI in src/lib/site.ts by the same check that holds the
-# version, so the footer and this file cannot drift apart.
-#
-# The version DOI is recorded after the release that mints it, because a
-# release cannot contain its own identifier. Zenodo holds the full list of
-# versions under the concept DOI; only the current one is repeated here.
+# the one to cite, and the version DOI for an earlier release. The concept DOI
+# is held against CITATION_DOI in src/lib/site.ts by npm run check:citation, so
+# the footer and this file cannot drift apart.
 cff-version: 1.2.0
 message: If you use this software, please cite it as below.
 type: software
@@ -59,34 +49,3 @@ keywords:
   - cell therapy
   - calibration
   - reproducible research
-
-# The paper, named as the citation to prefer over the software itself.
-#
-# preferred-citation is what GitHub and reference managers read to answer "cite
-# this repository" with the publication rather than the code. Both belong in a
-# reference list, and the README says so, but if a tool takes only one this is
-# the one to take.
-#
-# The version DOI is used here, not the concept DOI, and deliberately the
-# opposite way round from the software above: a reader of software wants the
-# current release, a reader of a paper wants the text that was written. The
-# concept DOI is recorded beside it. PAPER_DOI in src/lib/site.ts holds the same
-# value and npm run check:citation asserts the two agree.
-preferred-citation:
-  type: article
-  title: >-
-    Goodness-of-fit statistics do not detect consequential calibration failures
-    in flow cytometric antigen density quantification
-  authors:
-    - family-names: Modi
-      given-names: A.B.
-      affiliation: Ligant AI Incorporated
-      orcid: https://orcid.org/0009-0009-3837-6605
-  year: 2026
-  month: 9
-  doi: 10.5281/zenodo.22283647
-  url: https://zenodo.org/records/22283647
-  license: CC-BY-4.0
-  notes: >-
-    Preprint, version 1.0, published on Zenodo on 2026-09-03. Concept DOI
-    10.5281/zenodo.22283646 resolves to the newest revision.

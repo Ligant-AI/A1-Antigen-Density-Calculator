@@ -94,7 +94,7 @@ export const SHARED_GUIDANCE: GuidanceEntry[] = [
             { kind: 'p', text: PRIVACY_STATEMENT },
             {
                 kind: 'p',
-                text: 'The full terms are in the Privacy Policy, linked from the footer and from the Privacy section of Method, conventions and limits.',
+                text: 'The full terms are in the Privacy Policy, linked from the footer and from the Privacy section of About this calculator.',
             },
         ],
     },

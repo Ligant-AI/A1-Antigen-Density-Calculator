@@ -186,7 +186,7 @@ export function fitStandardCurve(standards: BeadStandard[]): CurveResult | {
     if (fit.r2 < MIN_R2) {
         flags.push({
             level: 'critical',
-            message: `Standard curve R² = ${fit.r2.toFixed(4)}, below the conventional acceptance threshold of ${MIN_R2}.`,
+            message: `Standard curve R² = ${fit.r2.toFixed(4)}, below the minimum of ${MIN_R2} this tool accepts.`,
             remedy: 'Check that each bead population is gated on the correct peak and that none are transposed, then look for a saturated or off-scale population.',
         });
     }
@@ -306,7 +306,7 @@ export function captureCompatibilityFlags(kitHost: HostSpecies | null, declared:
             {
                 level: 'warning',
                 message: `The selected beads capture ${kitHost} immunoglobulin. The detection antibody host is recorded as other.`,
-                remedy: 'Confirm from the antibody datasheet that these beads capture this host. If they do not, the calibration does not apply, however well the curve fits.',
+                remedy: 'Check the antibody datasheet for its host and the bead kit\'s datasheet for the species it captures. If they do not match, the calibration does not apply, however well the curve fits.',
             },
         ];
     }
@@ -364,7 +364,7 @@ export function quantifySample(sample: Sample, curve: CurveResult, options: Quan
         flags.push({
             level: 'critical',
             message: `Sample MFI (${formatNumber(sample.mfi)}) lies outside the calibrated range (${formatNumber(minMfi)}–${formatNumber(maxMfi)}).`,
-            remedy: 'The value is extrapolated beyond the standard and is not quantitative. Add a bead population that brackets this signal, or restain at a dilution that brings the sample inside the range. Do not report this figure.',
+            remedy: 'The value is extrapolated beyond the standard and is not quantitative. Add a bead population that brackets this signal, or acquire beads and sample again together at a detector setting that brings the sample inside the range. Do not dilute the stain to bring it into range: below saturation every ABC is an undercount. Do not report this figure.',
         });
     }
     const grossAbc = mfiToAbc(sample.mfi, curve, options);

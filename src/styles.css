@@ -357,7 +357,10 @@ svg.chart { display: block; width: 100%; height: auto; font-family: var(--font);
 .prose h3:first-child { margin-top: 0; }
 .prose p, .prose li { color: var(--text-secondary); font-size: 13px; line-height: 1.6; }
 .prose p + p { margin-top: 9px; }
-.prose ul { margin: 7px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+.prose ul, .prose ol { margin: 7px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; }
+.prose table { margin-top: 9px; }
+.prose td { padding: 6px 8px; vertical-align: top; color: var(--text-secondary); font-size: 12.5px; line-height: 1.5; }
+.prose th { padding: 6px 8px; }
 .prose strong { color: var(--text-primary); font-weight: 700; }
 .prose em { color: var(--text-primary); font-style: italic; }
 .prose pre {

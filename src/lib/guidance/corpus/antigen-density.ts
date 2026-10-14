@@ -408,7 +408,7 @@ export const ANTIGEN_DENSITY_GUIDANCE: GuidanceEntry[] = [
                 kind: 'list',
                 items: [
                     'The slope should sit near one. That is what a linear detector response looks like.',
-                    'R squared should exceed about 0.98. Below that, look for a saturated or off-scale bead population before doing anything else.',
+                    'This tool requires R squared of at least 0.98 and reports no figure below it. Below that, look for a saturated or off-scale bead population before doing anything else. A bead vendor may expect much more: Bangs Laboratories gives at least 0.9995 as generally desired for its Quantum beads.',
                 ],
             },
         ],
