@@ -1,0 +1,198 @@
+import { DENSITY_BANDS, bandFor, calibrationValid, confidenceLabel, formatNumber, type Flag, type Sample, type SampleResult, } from '../lib/quantify';
+const BAND_COLOR: Record<string, string> = {
+    subthreshold: 'var(--magnitude-1)',
+    low: 'var(--magnitude-2)',
+    intermediate: 'var(--magnitude-3)',
+    high: 'var(--magnitude-4)',
+};
+function FlagIcon() {
+    return (<svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M8 1.5 15 14H1L8 1.5Z" fill="var(--brand-amber)"/>
+      <path d="M8 6v3.5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round"/>
+      <circle cx="8" cy="11.8" r="0.9" fill="#fff"/>
+    </svg>);
+}
+export function FlagList({ flags }: {
+    flags: Flag[];
+}) {
+    if (flags.length === 0)
+        return null;
+    return (<>
+      {flags.map((f, i) => (<div key={i} className={f.level === 'critical' ? 'flag flag-critical' : 'flag'} role={f.level === 'critical' ? 'alert' : undefined}>
+          <FlagIcon />
+          <span>
+            
+            <strong>{f.level === 'critical' ? 'Do not report: ' : 'Note: '}</strong>
+            {f.message}
+            {f.remedy && <span className="flag-remedy">{f.remedy}</span>}
+          </span>
+        </div>))}
+    </>);
+}
+function backgroundShare(fraction: number): string {
+    return `${(fraction * 100).toFixed(1)}% of gross`;
+}
+function BackgroundDetail({ result }: {
+    result: SampleResult;
+}) {
+    if (result.controlAbc === null)
+        return null;
+    return (<>
+      <dt>Gross density</dt>
+      <dd>{formatNumber(result.grossAbc as number)}</dd>
+      <dt>Background density</dt>
+      <dd>
+        {formatNumber(result.controlAbc)}
+        {result.backgroundFraction !== null && (<span className="hint" style={{ fontFamily: 'var(--font)' }}>
+            {' ('}
+            {backgroundShare(result.backgroundFraction)}
+            {result.controlInRange === false && ', extrapolated below the standard'}
+            {')'}
+          </span>)}
+      </dd>
+    </>);
+}
+interface Props {
+    entries: {
+        sample: Sample;
+        result: SampleResult;
+    }[];
+    valency: 'monovalent' | 'bivalent';
+    confidenceLevel: number;
+    saturationConfirmed: boolean;
+}
+export function Results({ entries, valency, confidenceLevel, saturationConfirmed }: Props) {
+    const quantified = entries.filter((e) => e.result.netAbc !== null);
+    if (entries.length === 0) {
+        return <div className="empty">Enter a sample MFI to compute antigen density.</div>;
+    }
+    return (<div>
+      {!saturationConfirmed && quantified.length > 0 && (<p className="hint" style={{ marginBottom: 10 }}>
+          <strong>Stain titration: not declared.</strong> Every value below is therefore reported as
+          a lower bound, since sub-saturating antibody undercounts and does so in one direction
+          only. Record it under Analysis settings once the antibody has been titrated to saturation
+          on the beads and on the cells.
+        </p>)}
+      {entries.map(({ sample, result }) => {
+            const valid = calibrationValid(result);
+            const sampleCriticals = result.flags.filter((f) => f.level === 'critical');
+            const sampleWarnings = result.flags.filter((f) => f.level !== 'critical');
+            const reportable = valid && sampleCriticals.length === 0;
+            const band = result.netAbc !== null && reportable ? bandFor(result.netAbc) : null;
+            return (<div className="result-card" key={sample.id}>
+            <div className="result-name">
+              <span>{sample.label || 'Unnamed sample'}</span>
+              {band && (<span className="band-chip">
+                  <span className="band-dot" style={{ background: BAND_COLOR[band.id] }}/>
+                  {band.label}
+                </span>)}
+            </div>
+
+            <FlagList flags={result.calibrationFlags}/>
+            <FlagList flags={sampleCriticals}/>
+
+            {!valid ? (<>
+                <div className="hero">
+                  <span className="value below-detection">Calibration invalid</span>
+                </div>
+                <p className="hint">
+                  No density is reported, because this calibration cannot support one. The figure
+                  the arithmetic would produce is not merely imprecise: it is derived from a ruler
+                  the tool has just told you is wrong, and a number on the page invites being
+                  written down.
+                </p>
+              </>) : result.withheld ? (<>
+                <div className="hero">
+                  <span className="value below-detection">Not reported</span>
+                </div>
+                <p className="hint">
+                  No density, interval or inferred antigen sites are reported, because the condition
+                  stated above means the measurement does not support a figure. Gross and background
+                  densities are shown so the reason can be checked.
+                </p>
+                {result.controlAbc !== null && (<dl className="detail-grid">
+                    <BackgroundDetail result={result}/>
+                  </dl>)}
+              </>) : result.netAbc === null ? (<>
+                <div className="hero">
+                  <span className="value below-detection">Below detection</span>
+                </div>
+                <p className="hint">
+                  Signal is not distinguishable from background under this staining condition. No
+                  density is reported, because the arithmetic would produce one that the measurement
+                  does not support.
+                </p>
+              </>) : (<>
+                <div className="hero">
+                  <span className="value">{formatNumber(result.netAbc)}</span>
+                  <span className="unit">ABC</span>
+                </div>
+                <p className="hint" style={{ marginTop: -2 }}>
+                  Antibody binding capacity: antibody molecules bound per cell.
+                </p>
+                <div className="ci">
+                  {confidenceLabel(confidenceLevel)} {formatNumber(result.lower as number)} –{' '}
+                  {formatNumber(result.upper as number)}
+                  <span className="hint"> (from standard curve fit)</span>
+                </div>
+
+                <dl className="detail-grid">
+                  <dt>Inferred antigen sites</dt>
+                  <dd>
+                    {valency === 'bivalent'
+                        ? `${formatNumber(result.sitesLow as number)} – ${formatNumber(result.sitesHigh as number)}`
+                        : formatNumber(result.sitesLow as number)}
+                    <span className="hint" style={{ fontFamily: 'var(--font)' }}>
+                      {valency === 'bivalent'
+                        ? ' engaged sites, derived from ABC assuming bivalent IgG binding. Not measured, and not an upper bound on antigen: an epitope the antibody cannot reach is not counted at all.'
+                        : ' engaged sites, derived from ABC assuming 1:1 binding. Not measured, and not an upper bound on antigen: an epitope the antibody cannot reach is not counted at all.'}
+                    </span>
+                  </dd>
+                  <BackgroundDetail result={result}/>
+                  {band && (<>
+                      <dt>Interpretation</dt>
+                      <dd className="prose-dd">{band.note}</dd>
+                    </>)}
+                </dl>
+              </>)}
+
+            <FlagList flags={sampleWarnings}/>
+          </div>);
+        })}
+
+      {quantified.length > 0 && (<details className="options" style={{ marginTop: 14 }}>
+          <summary>Interpretation of density bands</summary>
+          <div>
+            <p className="hint">
+              These are order-of-magnitude reading aids drawn from the published density-threshold
+              literature, <strong>not validated cutoffs</strong>. A CAR's real activation threshold is a
+              property of the specific construct (scFv affinity, hinge, costimulatory domain) and of
+              the effector function under consideration. Cytotoxicity is triggered at lower antigen
+              density than cytokine release or proliferation. Determine the threshold empirically for
+              the construct in use.
+            </p>
+            <div className="table-scroll">
+            <table style={{ marginTop: 4 }}>
+              <caption>Density bands and their interpretation</caption>
+              <tbody>
+                {DENSITY_BANDS.map((b) => (<tr key={b.id}>
+                    <td style={{ whiteSpace: 'nowrap', padding: '6px 8px' }}>
+                      <span className="band-chip">
+                        <span className="band-dot" style={{ background: BAND_COLOR[b.id] }}/>
+                        {b.label}
+                      </span>
+                    </td>
+                    <td style={{ padding: '6px 8px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                      {b.max === Infinity
+                    ? `> ${b.min.toLocaleString('en-US')}`
+                    : `${b.min.toLocaleString('en-US')} – ${b.max.toLocaleString('en-US')}`}
+                    </td>
+                    <td className="hint" style={{ padding: '6px 8px' }}>{b.note}</td>
+                  </tr>))}
+              </tbody>
+            </table>
+            </div>
+          </div>
+        </details>)}
+    </div>);
+}

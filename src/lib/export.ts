@@ -1,0 +1,189 @@
+import { confidenceLabel, formatNumber, resultStatus, type BeadStandard, type CurveResult, type QuantifyOptions, type Sample, type SampleResult } from './quantify';
+const VAR_REFERENCE = /var\(--([a-z0-9-]+)\)/gi;
+export function substituteCssVars(value: string, resolved: ReadonlyMap<string, string>): string {
+    return value.replace(VAR_REFERENCE, (whole, name: string) => resolved.get(name) ?? whole);
+}
+function collectVarNames(el: Element, into: Set<string> = new Set()): Set<string> {
+    for (const attr of Array.from(el.attributes)) {
+        for (const match of attr.value.matchAll(VAR_REFERENCE))
+            into.add(match[1]);
+    }
+    for (const child of Array.from(el.children))
+        collectVarNames(child, into);
+    return into;
+}
+function resolveAttributes(el: Element, resolved: ReadonlyMap<string, string>) {
+    for (const attr of Array.from(el.attributes)) {
+        if (attr.value.includes('var(--')) {
+            el.setAttribute(attr.name, substituteCssVars(attr.value, resolved));
+        }
+    }
+    for (const child of Array.from(el.children))
+        resolveAttributes(child, resolved);
+}
+function download(filename: string, mime: string, content: string) {
+    const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+export function exportChartSvg(svgId: string, filename: string) {
+    const source = document.getElementById(svgId) as SVGSVGElement | null;
+    if (!source)
+        return;
+    const clone = source.cloneNode(true) as SVGSVGElement;
+    clone.removeAttribute('id');
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    const rootStyle = getComputedStyle(document.documentElement);
+    const resolved = new Map<string, string>();
+    for (const name of [...collectVarNames(clone), 'font', 'surface']) {
+        resolved.set(name, rootStyle.getPropertyValue(`--${name}`).trim() || '#000');
+    }
+    resolveAttributes(clone, resolved);
+    clone.setAttribute('font-family', resolved.get('font') || 'system-ui, sans-serif');
+    const viewBox = (source.getAttribute('viewBox') ?? '0 0 580 392').split(/\s+/).map(Number);
+    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bg.setAttribute('x', String(viewBox[0]));
+    bg.setAttribute('y', String(viewBox[1]));
+    bg.setAttribute('width', String(viewBox[2]));
+    bg.setAttribute('height', String(viewBox[3]));
+    bg.setAttribute('fill', resolved.get('surface') || '#ffffff');
+    clone.insertBefore(bg, clone.firstChild);
+    const markup = new XMLSerializer().serializeToString(clone);
+    download(filename, 'image/svg+xml', `<?xml version="1.0" encoding="UTF-8"?>\n${markup}`);
+}
+function csvRow(cells: (string | number | null)[]): string {
+    return cells
+        .map((c) => {
+        if (c === null || c === undefined)
+            return '';
+        const s = String(c);
+        return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    })
+        .join(',');
+}
+export function downloadCsv(filename: string, rows: (string | number | null)[][]) {
+    download(filename, 'text/csv', rows.map(csvRow).join('\n'));
+}
+export interface ExportPayload {
+    kitName: string;
+    lotId: string;
+    assignedLabel: string;
+    options: QuantifyOptions;
+    standards: BeadStandard[];
+    curve: CurveResult;
+    samples: {
+        sample: Sample;
+        result: SampleResult;
+    }[];
+    appVersion: string;
+}
+export function buildResultsCsv(payload: ExportPayload, generated: Date = new Date()): string {
+    const { options, curve, standards, samples } = payload;
+    const rows: string[] = [];
+    rows.push(csvRow(['Antigen Density Calculator', payload.appVersion]));
+    rows.push(csvRow(['Generated', generated.toISOString()]));
+    rows.push('');
+    rows.push(csvRow(['SETTINGS']));
+    rows.push(csvRow(['Calibration kit', payload.kitName]));
+    rows.push(csvRow(['Bead lot', payload.lotId.trim() || 'not recorded']));
+    rows.push(csvRow(['Standard chemistry', options.standardKind === 'abc' ? 'Certified ABC beads' : 'Certified PE molecules per bead']));
+    rows.push(csvRow(['Fluorophore:protein ratio', options.standardKind === 'pe-molecules' ? options.fpRatio : 'n/a']));
+    rows.push(csvRow(['Background subtraction', options.backgroundMode]));
+    rows.push(csvRow(['Detection antibody valency', options.valency]));
+    rows.push(csvRow(['Detection antibody host species', options.antibodyHost]));
+    rows.push(csvRow(['Titrated to saturation', options.saturationConfirmed ? 'yes' : 'no']));
+    rows.push(csvRow(['Confidence level', options.confidenceLevel]));
+    rows.push('');
+    rows.push(csvRow(['STANDARD CURVE (log10-log10 ordinary least squares)']));
+    rows.push(csvRow(['Slope', curve.fit.slope]));
+    rows.push(csvRow(['Intercept', curve.fit.intercept]));
+    rows.push(csvRow(['R squared', curve.fit.r2]));
+    rows.push(csvRow(['Residual standard error', curve.fit.residualSE]));
+    rows.push(csvRow(['Populations used (n)', curve.fit.n]));
+    rows.push(csvRow(['Design skew of log10(MFI)', curve.fit.skew]));
+    rows.push(csvRow(['Degrees of freedom', curve.fit.df]));
+    rows.push(csvRow(['MFI range', `${curve.mfiRange[0]} to ${curve.mfiRange[1]}`]));
+    if (curve.curvature) {
+        rows.push(csvRow(['Curvature: quadratic term', curve.curvature.quadratic]));
+        rows.push(csvRow(['Curvature: p value', curve.curvature.p]));
+        rows.push(csvRow(['Curvature: local slope, low end', curve.curvature.slopeAtLow]));
+        rows.push(csvRow(['Curvature: local slope, high end', curve.curvature.slopeAtHigh]));
+    }
+    else {
+        rows.push(csvRow([
+            'Curvature',
+            'not tested; six populations are required before a quadratic term can be estimated with any power',
+        ]));
+    }
+    rows.push('');
+    rows.push(csvRow(['CALIBRATION STANDARDS']));
+    rows.push(csvRow(['Population', 'MFI', payload.assignedLabel, 'Included in fit', 'Residual (log10)', 'Residual (%)']));
+    const residualByLabel = new Map(curve.residuals.map((r) => [r.label, r]));
+    for (const s of standards) {
+        const r = residualByLabel.get(s.label);
+        rows.push(csvRow([
+            s.label,
+            s.mfi,
+            s.assigned,
+            s.included ? 'yes' : 'no',
+            r ? r.logResidual : null,
+            r ? r.percent : null,
+        ]));
+    }
+    rows.push('');
+    rows.push(csvRow(['SAMPLES']));
+    rows.push(csvRow([
+        'Note: control_within_calibrated_range is normally "no". An isotype or FMO control sits below the dimmest bead in most real runs, which is why it is reported rather than flagged. It is escalated to a flag only when the background is also a material fraction of the gross signal; flag_status carries that judgement.',
+    ]));
+    rows.push(csvRow([
+        'Sample', 'Sample MFI', 'Control MFI', 'Gross ABC', 'Background ABC', 'Net ABC',
+        'Net ABC (as reported)',
+        'CI lower', 'CI upper', 'Inferred antigen sites low', 'Inferred antigen sites high',
+        'flag_status', 'within_calibrated_range', 'control_within_calibrated_range',
+        'background_pct_of_gross', 'mode_divergence_pct', 'calibration_valid', 'flag_detail',
+    ]));
+    for (const { sample, result } of samples) {
+        const yesNo = (v: boolean | null) => (v === null ? '' : v ? 'yes' : 'no');
+        rows.push(csvRow([
+            sample.label, sample.mfi, sample.controlMfi,
+            result.grossAbc, result.controlAbc, result.netAbc,
+            result.withheld ? 'not reported' : result.netAbc === null ? '' : formatNumber(result.netAbc),
+            result.lower, result.upper, result.sitesLow, result.sitesHigh,
+            resultStatus([...result.calibrationFlags, ...result.flags]),
+            yesNo(result.sampleInRange),
+            yesNo(result.controlInRange),
+            result.backgroundFraction === null ? '' : result.backgroundFraction * 100,
+            result.modeDivergence === null ? '' : result.modeDivergence * 100,
+            result.calibrationFlags.length === 0 ? 'yes' : 'no',
+            [...result.calibrationFlags, ...result.flags].map((f) => f.message).join(' | '),
+        ]));
+    }
+    rows.push('');
+    if (!options.saturationConfirmed) {
+        rows.push(csvRow([
+            'Stain was not confirmed titrated to saturation. Every ABC in this file is a lower bound: sub-saturating antibody undercounts.',
+        ]));
+    }
+    rows.push(csvRow([
+        'A row marked do_not_report carries no net ABC, interval or inferred antigen sites, because the figure is not reportable. Gross and background ABC are kept so the reason can be checked.',
+    ]));
+    rows.push(csvRow(['Research use only. Not qualified for GxP decision-making.']));
+    return rows.join('\n');
+}
+export function exportResultsCsv(payload: ExportPayload, filename: string) {
+    download(filename, 'text/csv', buildResultsCsv(payload));
+}
+export function summaryLine(label: string, r: SampleResult, confidenceLevel: number): string {
+    if (r.withheld)
+        return `${label}: not reported (a do-not-report condition holds)`;
+    if (r.netAbc === null)
+        return `${label}: below detection`;
+    const interval = `${confidenceLabel(confidenceLevel)} ${formatNumber(r.lower ?? 0)}–${formatNumber(r.upper ?? 0)}`;
+    return `${label}: ${formatNumber(r.netAbc)} ABC (${interval})`;
+}
