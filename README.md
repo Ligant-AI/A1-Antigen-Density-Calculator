@@ -4,9 +4,9 @@ Part of [Ligant Bench Tools](https://benchtools.ligant.ai/): free, open-source c
 
 ## Research use only
 
-Antigen Density Calculator is provided for research and educational use only. It is not validated for use in GxP-regulated work and must not be used for GxP decisions.
+Research use only. Not qualified for GxP decision-making.
 
-If your organisation needs this tool for GxP use, Ligant can validate it and install it within your organisation. Contact us at hello@ligant.ai.
+Antigen Density Calculator is a standalone calculator for research use, not for use in a GxP setting. For GxP work, Ligant offers a separate enterprise product. If your lab needs that, contact us at hello@ligant.ai.
 
 ## Run it on your computer
 
