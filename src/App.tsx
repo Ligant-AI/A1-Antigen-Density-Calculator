@@ -353,7 +353,6 @@ export default function App() {
       <SuiteFooter {...FOOTER}/>
 
       <p className="disclaimer">
-        <strong>Research use only. Not qualified for GxP decision-making.</strong>{' '}
         This tool determines antibody binding capacity from flow cytometry median fluorescence
         intensity, by calibration against a certified bead standard. It does not verify the standard
         or its lot, does not observe how the beads and cells were acquired, and cannot detect beads

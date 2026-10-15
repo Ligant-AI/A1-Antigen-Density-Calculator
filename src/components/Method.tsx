@@ -262,10 +262,6 @@ export function Method() {
             works).
           </li>
         </ul>
-        <p>
-          <strong>Research use only. Not qualified for GxP decision-making.</strong>
-        </p>
-
         <PrivacyPanel />
       </div>
     </section>);
