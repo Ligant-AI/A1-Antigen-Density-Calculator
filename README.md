@@ -24,7 +24,7 @@ npm run build   # writes the site to dist/
 npm run preview # serves dist/ locally
 ```
 
-Everything runs in your browser. Nothing you enter is sent anywhere.
+Everything runs in your browser. Nothing you enter into the calculator, and no result, is sent anywhere.
 
 ## Cite
 
