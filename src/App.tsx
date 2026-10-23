@@ -9,6 +9,7 @@ import { Results, FlagList } from './components/Results';
 import { StandardsTable, SamplesTable } from './components/Tables';
 import { Method } from './components/Method';
 import { CalibrationVerdict } from './components/CalibrationVerdict';
+import { Faq } from './components/Faq';
 import { LigantMark, SuiteFooter, SuiteHeader } from '@ligant/bench-chrome/react';
 import { FOOTER, HEADER } from './lib/chrome';
 import { SkipLink } from './components/shared/SkipLink';
@@ -147,8 +148,8 @@ export default function App() {
               <p className="hint" style={{ marginTop: 7 }}>
                 <strong>Assigned values are lot-specific.</strong> Transcribe them from the vial or the
                 lot certificate of analysis. No assigned values are hard-coded in this tool. Recording
-                which lot they came from is the only mitigation for the one failure this tool cannot
-                detect, and it travels with the export.
+                which lot they came from is how a fit built from another lot's certificate, a failure
+                this tool cannot detect, can be traced later, and it travels with the export.
               </p>
             </div>
             <StandardsTable standards={standards} assignedLabel={kit.assignedLabel} onChange={(next) => setState((s) => ({ ...s, standards: next }))}/>
@@ -348,6 +349,7 @@ export default function App() {
         </div>
       </div>
 
+      <Faq />
       </main>
 
       <SuiteFooter {...FOOTER}/>

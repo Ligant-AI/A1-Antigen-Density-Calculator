@@ -68,7 +68,7 @@ export const ANTIGEN_DENSITY_GUIDANCE: GuidanceEntry[] = [
         body: [
             {
                 kind: 'p',
-                text: 'Because it is the only defence against the one failure this tool cannot detect. Assigned values are certified per manufacturing lot and differ between lots of the same product. A fit built from the wrong lot\u2019s certificate is a straight line through consistent numbers: the slope is near one, the residuals are small, and every check here is satisfied. The result is wrong by whatever the two lots differ by, and nothing in the arithmetic can see it.',
+                text: 'Because a fit built from the wrong lot\u2019s certificate is a failure this tool cannot detect, and the recorded lot is what lets it be traced. Assigned values are certified per manufacturing lot and differ between lots of the same product. A fit built from the wrong lot\u2019s certificate is a straight line through consistent numbers: the slope is near one, the residuals are small, and every check here is satisfied. The result is wrong by whatever the two lots differ by, and nothing in the arithmetic can see it.',
             },
             {
                 kind: 'p',
@@ -132,7 +132,7 @@ export const ANTIGEN_DENSITY_GUIDANCE: GuidanceEntry[] = [
             },
             {
                 kind: 'note',
-                text: 'The range bounds the sites that were engaged, and it bounds them from below. An epitope that was masked, already occupied, or internalised binds nothing and is counted nowhere, so the total antigen on the cell can exceed the top of the range by any amount. Twice the measured value is not a ceiling on antigen.',
+                text: 'The range covers only the sites that were engaged. An epitope that was masked, already occupied, or internalized binds nothing and is counted nowhere, so the total antigen on the cell can exceed the top of the range by any amount. Twice the measured value is not a ceiling on antigen.',
             },
         ],
     },

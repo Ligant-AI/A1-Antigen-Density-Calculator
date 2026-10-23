@@ -102,7 +102,7 @@ export function Method() {
             <tr><td>Standard span</td><td>at most 6 decades of MFI</td><td>Commercial bead sets span about three decades, so a span beyond six is almost always a misplaced decimal point or two standards pasted together, not a real standard.</td></tr>
             <tr><td>Background share of gross density</td><td>25% material, 50% dominant, 90% below detection</td><td>25% is a chosen point at which the control is doing enough of the work to be worth stating (net three times background); the figure is still reported. At 50% the net equals the background, so no figure or band is reported. At 90% the result is the small difference of two large numbers and is reported as below detection. If the control lies below the lowest bead, any background of 25% or more stops the figure.</td></tr>
             <tr><td>Subtraction-mode divergence</td><td>10%</td><td>Above this the choice between density space and MFI space changes the answer enough to be worth stating.</td></tr>
-            <tr><td>Highest plausible density</td><td>2 × 10<sup>7</sup> ABC</td><td>Well above typical antigen densities, and of the order of the number of antibodies that could pack onto the surface of a large cell (a 15 µm cell has about 700 µm² of surface, room for roughly 5 to 14 million antibody footprints of 100 to 150 nm² depending on membrane folding). Above it a figure is arithmetic, not measurement, usually a mistyped MFI, and is not reported.</td></tr>
+            <tr><td>Highest plausible density</td><td>2 × 10<sup>7</sup> ABC</td><td>Well above typical antigen densities, and of the order of the number of antibodies that could pack onto the surface of a large cell (a smooth 15 µm cell has about 700 µm² of surface, room for roughly 5 to 7 million antibody footprints of 100 to 150 nm², and membrane folding adds more). Above it a figure is arithmetic, not measurement, usually a mistyped MFI, and is not reported.</td></tr>
             <tr><td>Density bands</td><td>100, 1,000 and 10,000 ABC</td><td>Order-of-magnitude reading aids drawn from the CAR literature below, not cutoffs.</td></tr>
             <tr><td>Confidence level</td><td>95% by default</td><td>Your choice of 90%, 95% or 99%.</td></tr>
           </tbody>
@@ -170,14 +170,14 @@ export function Method() {
             <tr><td>Standard is curved</td><td>The standard bends in log-log space.</td><td>Local slopes differ; drop a saturated population or re-acquire.</td><td>No</td></tr>
             <tr><td>Host species mismatch</td><td>The beads capture a different species than your detection antibody.</td><td>These beads cannot calibrate this stain; use a kit whose capture species matches.</td><td>Yes</td></tr>
             <tr><td>Host species recorded as other</td><td>The detection antibody host is "other", so the match with the beads cannot be checked.</td><td>Check the antibody datasheet for its host and the bead kit's datasheet for the species it captures.</td><td>No</td></tr>
-            <tr><td>Sample outside calibrated range</td><td>Sample MFI is above or below the beads.</td><td>Do not extrapolate. Add a bead population that brackets the sample, or acquire beads and sample again together at a setting that brings the sample within the beads. Do not dilute the stain to bring it into range: below saturation every ABC is an undercount.</td><td>Yes</td></tr>
+            <tr><td>Sample outside calibrated range</td><td>The stained MFI is brighter than the brightest bead or dimmer than the dimmest.</td><td>Do not extrapolate. Add a bead population that brackets the sample, or acquire beads and sample again together at a setting that brings the sample within the beads. Do not dilute the stain to bring it into range: below saturation every ABC is an undercount.</td><td>Yes</td></tr>
             <tr><td>No specific signal</td><td>Control equals or exceeds the sample.</td><td>Check that the right control was used and the tubes were not swapped. A genuinely negative result is a finding: report it as below detection.</td><td>Yes</td></tr>
             <tr><td>Background 25% to 50% of gross density</td><td>The control accounts for a material share of the signal.</td><td>The value is a difference of larger numbers; consider whether an FMO rather than an isotype is the right control for this panel.</td><td>No</td></tr>
             <tr><td>Background 25% or more, control below the beads</td><td>A material share of the result is a control read off the curve below the lowest bead.</td><td>Add a bead population dim enough to bracket the control, or acquire the control within range.</td><td>Yes</td></tr>
             <tr><td>Background 50% to 90% of gross density, control within the beads</td><td>The net value is smaller than the background subtracted to obtain it.</td><td>Confirm the control is right for this panel (an FMO rather than an isotype), and raise specific signal: antibody concentration, fluorophore brightness, whether the target is expressed.</td><td>Yes</td></tr>
             <tr><td>Background 90% or more of gross density</td><td>The sample is not meaningfully above its control.</td><td>Report as below detection under these staining conditions.</td><td>Yes</td></tr>
             <tr><td>Modes diverge</td><td>Density-space and MFI-space subtraction differ by more than 10%.</td><td>State which mode you used.</td><td>No</td></tr>
-            <tr><td>Below the lowest bead</td><td>The result is below the lowest standard.</td><td>Say so when you report the value: the curve has not been shown to quantify this dim. Add a dimmer bead population if the kit has one.</td><td>No</td></tr>
+            <tr><td>Below the lowest bead</td><td>The stained MFI is within the beads, but the reported result, after any control subtraction, is below the ABC of the dimmest bead.</td><td>Say so when you report the value: the curve has not been shown to quantify this dim. Add a dimmer bead population if the kit has one.</td><td>No</td></tr>
             <tr><td>Implausible density</td><td>The result exceeds 2 × 10<sup>7</sup> ABC.</td><td>Usually a mistyped MFI; check the entry.</td><td>Yes</td></tr>
           </tbody>
         </table>
@@ -218,11 +218,11 @@ export function Method() {
         <ul>
           <li>
             <strong>ABC is not equivalent to antigen copy number.</strong> Epitope accessibility,
-            binding valency, conjugate performance, and antigen internalisation intervene between
-            the two quantities. The inferred site range bounds the sites the antibody
-            <em>engaged</em>, and it bounds them from below: an epitope that was masked, already
-            occupied, or internalised contributes nothing to the measurement, so the total antigen
-            on the cell may exceed the top of that range by any amount.
+            binding valency, conjugate performance, and antigen internalization intervene between
+            the two quantities. The inferred site range covers only the sites the antibody{' '}
+            <em>engaged</em>. An epitope that was masked, already
+            occupied, or internalized contributes nothing to the measurement, so the total antigen
+            on the cell may exceed the top of that range by any amount: the top of the range is not an upper bound on antigen.
           </li>
           <li>
             <strong>It cannot tell whether beads and cells were acquired under identical

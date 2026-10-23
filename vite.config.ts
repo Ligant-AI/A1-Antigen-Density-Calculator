@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { SITE_URL, TOOL_PATH } from './src/lib/site';
+import { applyStaticBlock } from './src/lib/staticBlock';
 function siteMetadata(): Plugin {
     return {
         name: 'ligant-site-metadata',
@@ -57,8 +58,16 @@ function siteMetadata(): Plugin {
         },
     };
 }
+export function staticBlock(): Plugin {
+    return {
+        name: 'ligant-static-block',
+        transformIndexHtml(html: string) {
+            return applyStaticBlock(html);
+        },
+    };
+}
 export default defineConfig({
-    plugins: [react(), siteMetadata()],
+    plugins: [react(), siteMetadata(), staticBlock()],
     base: './',
     build: {
         rollupOptions: {

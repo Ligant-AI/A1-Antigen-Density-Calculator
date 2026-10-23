@@ -1,11 +1,10 @@
 import type { FooterOptions, HeaderOptions } from '@ligant/bench-chrome';
 import { APP_VERSION, CITATION_DOI, RELEASE_YEAR, REPO_URL, SITE_URL, TOOL_PATH, } from './site';
+import { SEO } from './seo';
 export const HEADER: HeaderOptions = {
     path: TOOL_PATH,
-    title: 'Antigen Density Calculator',
-    description: 'Quantifies surface antigen density from flow cytometry median fluorescence intensity by ' +
-        'calibration against certified bead standards. Every value is computed deterministically by a ' +
-        'least-squares fit you can read. No model and no inference is applied to any reported number.',
+    title: SEO.h1,
+    description: SEO.lead,
 };
 export const FOOTER: FooterOptions = {
     repoUrl: REPO_URL ?? '',
